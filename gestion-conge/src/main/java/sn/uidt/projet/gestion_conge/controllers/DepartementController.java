@@ -53,8 +53,8 @@ public class DepartementController {
         return ResponseEntity.ok("Departement supprime");
     }
 
-    //VAssigner chef au departement
-    @PutMapping("/{id}/chef/{managerId}")
+    //Assigner chef au departement
+    @PutMapping("/{deptId}/chef/{managerId}")
     public ResponseEntity<Departement> assigneChef(@PathVariable Long managerId, @PathVariable Long deptId) {
         return ResponseEntity.ok(departementService.chefDepartement(deptId, managerId));
     }

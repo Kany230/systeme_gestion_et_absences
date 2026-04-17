@@ -16,12 +16,15 @@ import sn.uidt.projet.gestion_conge.entities.User;
 import sn.uidt.projet.gestion_conge.repositories.CompteursCongesRepository;
 import sn.uidt.projet.gestion_conge.repositories.DemandeCongeRepository;
 import sn.uidt.projet.gestion_conge.repositories.JourFerieRepository;
+import sn.uidt.projet.gestion_conge.repositories.UserRepository;
 
 @Service
 public class DemandeCongeService {
 
     @Autowired
     private DemandeCongeRepository demandeCongeRepository;
+    @Autowired
+    private UserRepository userRepository;
     @Autowired
     private JourFerieRepository jourFerieRepository;
     @Autowired
@@ -54,12 +57,14 @@ public class DemandeCongeService {
         double duree = calculerJoursOuvrable(debut, fin);
 
         //Verification du solde de conge
-        if (typeConge.getEstDeductible() && user.getCompteursConges().getSoldeAn() < duree) {
+        if (Boolean.TRUE.equals(typeConge.getEstDeductible()) && user.getCompteursConges().getSoldeAn() < duree) {
             throw new RuntimeException("Solde de conge insuffisant");
         }
 
+        User user1 = userRepository.findById(user.getId()).get();
+
         DemandeConge demandeConge = new DemandeConge();
-        demandeConge.setUser(user);
+        demandeConge.setUser(user1);
         demandeConge.setDateDebut(debut);
         demandeConge.setDateFin(fin);
         demandeConge.setTypeConge(typeConge);
@@ -75,8 +80,8 @@ public class DemandeCongeService {
         DemandeConge demandeConge = demandeCongeRepository.findById(demandeId).orElseThrow(() -> new RuntimeException("Demande de conge non trouvee"));
 
         if (role.equals("chef_equipe") && demandeConge.getStatut().equals("en_attente_chef_equipe")) {
-            demandeConge.setStatut("en_attente_chef_departement");
-        } else if (role.equals("chef_departement") && demandeConge.getStatut().equals("en_attente_chef_departement")) {
+            demandeConge.setStatut("en_attente_manager");
+        } else if (role.equals("manager") && demandeConge.getStatut().equals("en_attente_manager")) {
             demandeConge.setStatut("en_attente_DRH");
         } else if (role.equals("DRH") && demandeConge.getStatut().equals("en_attente_DRH")) {
             demandeConge.setStatut("validee");
@@ -91,19 +96,40 @@ public class DemandeCongeService {
 
     //Deduire le solde de conge dans le compteur
     public void appliquerMajCompteur(DemandeConge demandeConge) {
+        System.out.println("DEBUG: Entrée dans appliquerMajCompteur");
         CompteursConges compteursConges = demandeConge.getUser().getCompteursConges();
 
-        if (demandeConge.getTypeConge().getEstDeductible()) {
-            double newSolde = compteursConges.getSoldeAn() - demandeConge.getNombreJoursDeduit();
-
-            if (newSolde < 0) {
-                throw new RuntimeException("Solde ne peut pas etre nagatif");
-            }
-            compteursConges.setSoldeAn(newSolde);
-            compteursCongesRepository.save(compteursConges);
-
+        if (compteursConges == null) {
+            System.out.println("DEBUG: L'utilisateur n'a pas de compteur !");
+            return;
         }
 
+        // Remets la logique dynamique si tu veux que ce soit propre :
+        boolean estDeductible = demandeConge.getTypeConge() != null && Boolean.TRUE.equals(demandeConge.getTypeConge().getEstDeductible());
+
+        System.out.println("DEBUG: Est déductible ? " + estDeductible);
+        System.out.println("DEBUG: Jours à déduire : " + demandeConge.getNombreJoursDeduit());
+
+        if (estDeductible) {
+            double currentSolde = compteursConges.getSoldeAn();
+            double jours = demandeConge.getNombreJoursDeduit();
+
+            if (jours <= 0) {
+                System.out.println("DEBUG: Attention, nombre de jours déduits est de 0 ou moins");
+            }
+
+            double newSolde = currentSolde - jours;
+
+            if (newSolde < 0) {
+                throw new RuntimeException("Solde insuffisant (" + currentSolde + " < " + jours + ")");
+            }
+
+            compteursConges.setSoldeAn(newSolde);
+            this.compteursCongesRepository.save(compteursConges);
+            System.out.println("DEBUG: UPDATE Compteur envoyé à la base. Nouveau solde : " + newSolde);
+        } else {
+            System.out.println("DEBUG: Le type de congé n'est pas déductible, on ne réduit rien.");
+        }
     }
 
     //Refuser une demande de conge

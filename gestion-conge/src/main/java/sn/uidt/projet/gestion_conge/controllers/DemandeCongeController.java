@@ -35,9 +35,9 @@ public class DemandeCongeController {
 
     //Voir demandesmes 
     @GetMapping("/mes-demande/{userId}")
-    public List<DemandeConge> voirMesDemande(@PathVariable Long id) {
+    public List<DemandeConge> voirMesDemande(@PathVariable Long userId) {
 
-        return demandeCongeService.voirMesDemandes(id);
+        return demandeCongeService.voirMesDemandes(userId);
     }
 
     //Confirme le retour d'un utilisateur
@@ -92,7 +92,7 @@ public class DemandeCongeController {
     }
 
     //Lister des retours
-    @GetMapping("/retouts")
+    @GetMapping("/retours")
     public List<DemandeConge> getRetour() {
         return demandeCongeService.lesRetardDeRetours();
     }

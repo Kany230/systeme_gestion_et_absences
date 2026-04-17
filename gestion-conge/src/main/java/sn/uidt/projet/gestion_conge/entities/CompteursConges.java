@@ -30,6 +30,7 @@ public class CompteursConges {
 
     @OneToOne
     @JoinColumn(name = "id_user")
+    @JsonIgnore
     private User user;
 
     @OneToMany(mappedBy = "compteursConges", cascade = CascadeType.ALL)

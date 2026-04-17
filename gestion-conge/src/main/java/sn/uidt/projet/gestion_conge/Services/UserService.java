@@ -104,7 +104,7 @@ public class UserService implements UserDetailsService {
     }
 
     public List<User> ListeParMonEquipe(Long managerId) {
-        return userRepository.findByManager(managerId);
+        return userRepository.findByManagerId(managerId);
     }
 
     @Transactional

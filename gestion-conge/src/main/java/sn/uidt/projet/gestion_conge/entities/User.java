@@ -3,6 +3,9 @@ package sn.uidt.projet.gestion_conge.entities;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -45,15 +48,20 @@ public class User {
 
     @ManyToOne
     @JoinColumn(name = "id_departement")
+    @JsonIgnore
     private Departement departement;
 
     @ManyToOne
     @JoinColumn(name = "id_manager")
+    @JsonIgnore
+    @JsonBackReference // Empêche la boucle infinie lors de la conversion en JSON
     private User manager;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
     private CompteursConges compteursConges;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<DemandeConge> demandeConges;
 }

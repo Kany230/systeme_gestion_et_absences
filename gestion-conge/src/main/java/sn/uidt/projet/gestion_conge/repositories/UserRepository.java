@@ -26,6 +26,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByDepartementId(Long departementId);
 
     //Permet de trouver tous les membres d'un equipe d'un departement
-    List<User> findByManager(Long managerId);
+    List<User> findByManagerId(Long managerId);
 
 }
