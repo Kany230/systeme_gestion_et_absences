@@ -66,7 +66,7 @@ public class CompteursCongesService {
     }
 
     //Consulter le solde d'un utilisateur
-    public CompteursConges consulderSoldeUser(Long userId) {
+    public CompteursConges consulterSoldeUser(Long userId) {
         CompteursConges compteursConges = compteursCongesRepository.findByUserId(userId).orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
         return compteursConges;
     }

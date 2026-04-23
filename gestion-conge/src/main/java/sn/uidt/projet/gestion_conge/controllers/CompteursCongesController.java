@@ -25,7 +25,7 @@ public class CompteursCongesController {
     //Consulter le solde d'un user
     @GetMapping("/user/{userId}")
     public ResponseEntity<CompteursConges> getSoldeById(@PathVariable Long userId) {
-        CompteursConges compteurs = compteursCongesService.consulderSoldeUser(userId);
+        CompteursConges compteurs = compteursCongesService.consulterSoldeUser(userId);
         return ResponseEntity.ok(compteurs);
     }
 
