@@ -1,4 +1,4 @@
-package sn.uidt.projet.gestion_conge.Services;
+package sn.uidt.projet.gestion_conge.services;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -53,9 +53,15 @@ public class DemandeCongeService {
     }
 
     //Soumettre une demande de conge
-    public DemandeConge creerDemandeConge(User user, LocalDate debut, LocalDate fin, TypeConge typeConge) {
+    public DemandeConge creerDemandeConge(User user, LocalDate debut, LocalDate fin, TypeConge typeConge, String justificationUrl) {
         double duree = calculerJoursOuvrable(debut, fin);
 
+        // 1. Vérification de la justification obligatoire
+        if (Boolean.TRUE.equals(typeConge.getDemandeJustification())) {
+            if (justificationUrl == null || justificationUrl.trim().isEmpty()) {
+                throw new RuntimeException("Un document justificatif (PDF ou Image) est obligatoire pour ce type de congé.");
+            }
+        }
         //Verification du solde de conge
         if (Boolean.TRUE.equals(typeConge.getEstDeductible()) && user.getCompteursConges().getSoldeAn() < duree) {
             throw new RuntimeException("Solde de conge insuffisant");
@@ -68,6 +74,7 @@ public class DemandeCongeService {
         demandeConge.setDateDebut(debut);
         demandeConge.setDateFin(fin);
         demandeConge.setTypeConge(typeConge);
+        demandeConge.setJustificationUrl(justificationUrl);
         demandeConge.setNombreJoursDeduit(duree);
         demandeConge.setStatut("en_attente_chef_equipe");
 
@@ -100,35 +107,36 @@ public class DemandeCongeService {
         CompteursConges compteursConges = demandeConge.getUser().getCompteursConges();
 
         if (compteursConges == null) {
-            System.out.println("DEBUG: L'utilisateur n'a pas de compteur !");
-            return;
+            throw new RuntimeException("L'utilisateur n'a pas de compteur configuré.");
         }
 
-        // Remets la logique dynamique si tu veux que ce soit propre :
-        boolean estDeductible = demandeConge.getTypeConge() != null && Boolean.TRUE.equals(demandeConge.getTypeConge().getEstDeductible());
+        TypeConge type = demandeConge.getTypeConge();
+        boolean estDeductible = type != null && Boolean.TRUE.equals(type.getEstDeductible());
+        double joursADeduire = demandeConge.getNombreJoursDeduit();
 
-        System.out.println("DEBUG: Est déductible ? " + estDeductible);
-        System.out.println("DEBUG: Jours à déduire : " + demandeConge.getNombreJoursDeduit());
+        if (estDeductible && type != null) {
 
-        if (estDeductible) {
-            double currentSolde = compteursConges.getSoldeAn();
-            double jours = demandeConge.getNombreJoursDeduit();
+            boolean estUnePermission = type.getNomType().toLowerCase().contains("permission");
 
-            if (jours <= 0) {
-                System.out.println("DEBUG: Attention, nombre de jours déduits est de 0 ou moins");
+            if (estUnePermission) {
+                // Logique pour le solde de Permission
+                int currentSoldePerm = compteursConges.getSoldePermission();
+                if (currentSoldePerm < joursADeduire) {
+                    throw new RuntimeException("Solde de permission insuffisant (" + currentSoldePerm + " jours restants)");
+                }
+                compteursConges.setSoldePermission(currentSoldePerm - (int) joursADeduire);
+                System.out.println("DEBUG: Solde Permission mis à jour : " + compteursConges.getSoldePermission());
+            } else {
+                // Logique par défaut pour le solde Annuel
+                double currentSoldeAn = compteursConges.getSoldeAn();
+                if (currentSoldeAn < joursADeduire) {
+                    throw new RuntimeException("Solde annuel insuffisant (" + currentSoldeAn + " jours restants)");
+                }
+                compteursConges.setSoldeAn(currentSoldeAn - joursADeduire);
+                System.out.println("DEBUG: Solde Annuel mis à jour : " + compteursConges.getSoldeAn());
             }
 
-            double newSolde = currentSolde - jours;
-
-            if (newSolde < 0) {
-                throw new RuntimeException("Solde insuffisant (" + currentSolde + " < " + jours + ")");
-            }
-
-            compteursConges.setSoldeAn(newSolde);
             this.compteursCongesRepository.save(compteursConges);
-            System.out.println("DEBUG: UPDATE Compteur envoyé à la base. Nouveau solde : " + newSolde);
-        } else {
-            System.out.println("DEBUG: Le type de congé n'est pas déductible, on ne réduit rien.");
         }
     }
 

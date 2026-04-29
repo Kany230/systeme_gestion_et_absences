@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import sn.uidt.projet.gestion_conge.Services.JourFerieService;
 import sn.uidt.projet.gestion_conge.entities.JourFerie;
+import sn.uidt.projet.gestion_conge.services.JourFerieService;
 
 @RestController
 @RequestMapping("/api/jours-feries")

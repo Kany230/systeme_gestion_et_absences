@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import sn.uidt.projet.gestion_conge.Services.DepartementService;
 import sn.uidt.projet.gestion_conge.entities.Departement;
+import sn.uidt.projet.gestion_conge.services.DepartementService;
 
 @RestController
 @RequestMapping("/api/departement")

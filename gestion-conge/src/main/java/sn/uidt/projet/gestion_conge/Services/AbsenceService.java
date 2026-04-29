@@ -1,4 +1,4 @@
-package sn.uidt.projet.gestion_conge.Services;
+package sn.uidt.projet.gestion_conge.services;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -39,6 +39,19 @@ public class AbsenceService {
                 absenceRepository.save(absence);
             }
         }
+    }
+
+    public Absence justifierAbsence(Long absenceId, String motifAbsence, String justificationUrl) {
+
+        Absence abscence = absenceRepository.findById(absenceId).orElseThrow(() -> new RuntimeException("L'utilisateur n'est pas trouvée"));
+
+        //Mis à jour des informations
+        abscence.setMotifJustifie(motifAbsence);
+        abscence.setJustificationUrl(justificationUrl);
+        abscence.setStatut(StatutAbsence.justifie);
+
+        return absenceRepository.save(abscence);
+
     }
 
     //Lister les absences d'un utilisateur

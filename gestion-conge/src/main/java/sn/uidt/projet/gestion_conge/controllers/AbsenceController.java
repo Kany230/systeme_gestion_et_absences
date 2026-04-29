@@ -1,6 +1,7 @@
 package sn.uidt.projet.gestion_conge.controllers;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -8,11 +9,13 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import sn.uidt.projet.gestion_conge.Services.AbsenceService;
 import sn.uidt.projet.gestion_conge.entities.Absence;
+import sn.uidt.projet.gestion_conge.services.AbsenceService;
 
 @RestController
 @RequestMapping("/api/absences")
@@ -37,8 +40,8 @@ public class AbsenceController {
 
     //La liste des absences dans une equipe
     @GetMapping("/manager/{managerId}")
-    public List<Absence> listeAbsenceEquipe(@PathVariable Long managerid) {
-        return absenceService.listParEquipe(managerid);
+    public List<Absence> listeAbsenceEquipe(@PathVariable Long managerId) {
+        return absenceService.listParEquipe(managerId);
     }
 
     //La liste des absences dans une equipe
@@ -51,5 +54,19 @@ public class AbsenceController {
     @GetMapping("/absences")
     public List<Absence> getAll() {
         return absenceService.getAll();
+    }
+
+    @PutMapping("/{id}/justifier")
+    public ResponseEntity<?> justifierAbscence(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+
+        try {
+            String motif = payload.get("motifJustifie");
+            String justification = payload.get("justificationUrl");
+
+            Absence abscence = absenceService.justifierAbsence(id, motif, justification);
+            return ResponseEntity.ok(abscence);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erreur : " + e.getMessage());
+        }
     }
 }

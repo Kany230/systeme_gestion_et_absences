@@ -1,4 +1,4 @@
-package sn.uidt.projet.gestion_conge.Services;
+package sn.uidt.projet.gestion_conge.services;
 
 import java.time.LocalDate;
 import java.util.List;

@@ -9,8 +9,9 @@ import lombok.Data;
 
 @Entity
 @Data
-@Table(name="type_conges")
+@Table(name = "type_conges")
 public class TypeConge {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -18,7 +19,5 @@ public class TypeConge {
     private Boolean estDeductible;
     private Boolean demandeJustification;
     private Integer dureMax;
-
-
-    
+    private Boolean estUnePermission;
 }

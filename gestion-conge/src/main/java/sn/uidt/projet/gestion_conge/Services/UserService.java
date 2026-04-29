@@ -1,4 +1,4 @@
-package sn.uidt.projet.gestion_conge.Services;
+package sn.uidt.projet.gestion_conge.services;
 
 import java.util.List;
 
@@ -129,6 +129,10 @@ public class UserService implements UserDetailsService {
         user.setDepartement(details.getDepartement());
 
         return userRepository.save(user);
+    }
+
+    public User trouverParEmail(String email) {
+        return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'email : " + email));
     }
 
     /**

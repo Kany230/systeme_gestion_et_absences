@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import sn.uidt.projet.gestion_conge.Services.PointageService;
+import sn.uidt.projet.gestion_conge.services.PointageService;
 import sn.uidt.projet.gestion_conge.entities.Pointage;
 
 @RestController

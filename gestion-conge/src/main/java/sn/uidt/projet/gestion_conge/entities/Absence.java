@@ -2,6 +2,8 @@ package sn.uidt.projet.gestion_conge.entities;
 
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -27,12 +29,14 @@ public class Absence {
     private LocalDate dateDetecter;
 
     private String motifJustifie;
+    private String justificationUrl;
 
     @Enumerated(EnumType.STRING)
     private StatutAbsence statut;
 
     @ManyToOne
     @JoinColumn(name = "id_user")
+    @JsonIgnore
     private User user;
 
     @ManyToOne

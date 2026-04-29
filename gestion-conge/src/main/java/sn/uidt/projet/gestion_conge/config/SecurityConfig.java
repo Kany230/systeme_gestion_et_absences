@@ -14,15 +14,31 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. Désactive le CSRF (nécessaire pour tester les POST/PUT avec Postman)
                 .csrf(csrf -> csrf.disable())
-                // 2. Autorise toutes les requêtes sans authentification
                 .authorizeHttpRequests(auth -> auth
-                .anyRequest().permitAll()
+                .requestMatchers("/login").permitAll() // Autorise l'acces au login
+                .anyRequest().permitAll() // Garde le reste ouvert pour l'instant
                 )
-                // 3. Désactive le formulaire de login par défaut
-                .formLogin(form -> form.disable())
-                .httpBasic(basic -> basic.disable());
+                .formLogin(form -> form
+                .loginProcessingUrl("/login") // L'URL que React va appeler
+                .successHandler((request, response, authentication) -> {
+                    response.setStatus(200);
+                    response.setContentType("application/json");
+                    // On renvoie un petit message de success 
+                    response.getWriter().write("{\"message\": \"OK\"}");
+                })
+                .failureHandler((request, response, exception) -> {
+                    response.setStatus(401);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\": \"Email ou mot de passe incorrect\"}");
+                })
+                )
+                .logout(logout -> logout
+                .logoutUrl("/logout")
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    response.setStatus(200);
+                })
+                );
 
         return http.build();
     }

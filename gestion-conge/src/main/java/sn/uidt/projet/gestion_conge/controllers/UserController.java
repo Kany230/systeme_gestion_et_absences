@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import sn.uidt.projet.gestion_conge.Services.ExcelService;
-import sn.uidt.projet.gestion_conge.Services.UserService;
 import sn.uidt.projet.gestion_conge.entities.User;
+import sn.uidt.projet.gestion_conge.services.ExcelService;
+import sn.uidt.projet.gestion_conge.services.UserService;
 
 @RestController
 @RequestMapping("/api/users")
@@ -52,6 +52,13 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Erreur : " + e.getMessage());
         }
+    }
+
+    //Trouver l'utilisateur
+    @GetMapping("/by-email/{email}")
+    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+        User user = userService.trouverParEmail(email);
+        return ResponseEntity.ok(user);
     }
 
     //Lister tout le monde

@@ -21,11 +21,11 @@ public interface PointageRepository extends JpaRepository<Pointage, Long> {
     List<Pointage> findByUserId(Long id);
 
     //Liste des pointage d'une equipe
-    @Query("SELECT p FROM Pointage WHERE p.user.manager.id = :mangerId")
+    @Query("SELECT p FROM Pointage p WHERE p.user.manager.id = :managerId")
     List<Pointage> findByManagerId(Long managerId);
 
     //Lister des pointage d'un departement
-    @Query("SELECT p FROM Pointage WHERE p.user.departement.id = :departementId")
+    @Query("SELECT p FROM Pointage p WHERE p.user.departement.id = :departementId")
     List<Pointage> findByDepartemntId(Long departementrId);
 
     //Pointage par statut pour le drh

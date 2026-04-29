@@ -16,7 +16,7 @@ public interface AbsenceRepository extends JpaRepository<Absence, Long> {
     @Query("SELECT a FROM Absence a WHERE a.user.manager.id = :managerId")
     List<Absence> findByManagerId(Long managerId);
 
-    //les absences dans le departemnts
-    @Query("SELECT a FROM Absence a WHERE a.user.departemnt.id = :departementId")
+    //les absences dans le departements
+    @Query("SELECT a FROM Absence a WHERE a.user.departement.id = :departementId")
     List<Absence> findByDepartementId(Long departementId);
 }

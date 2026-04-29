@@ -1,4 +1,4 @@
-package sn.uidt.projet.gestion_conge.Services;
+package sn.uidt.projet.gestion_conge.services;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -53,7 +53,7 @@ public class PointageService {
         if (heure.isAfter(heureLimite)) {
             pointage.setStatut(StatutPointage.retard);
         } else {
-            pointage.setStatut(StatutPointage.absent);
+            pointage.setStatut(StatutPointage.present);
         }
 
         return pointageRepository.save(pointage);

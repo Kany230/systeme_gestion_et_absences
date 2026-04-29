@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import sn.uidt.projet.gestion_conge.Services.CompteursCongesService;
 import sn.uidt.projet.gestion_conge.entities.CompteursConges;
+import sn.uidt.projet.gestion_conge.services.CompteursCongesService;
 
 @RestController
 @RequestMapping("/api/comptes-conges")

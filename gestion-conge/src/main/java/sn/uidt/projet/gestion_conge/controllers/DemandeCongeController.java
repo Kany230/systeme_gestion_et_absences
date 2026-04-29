@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import sn.uidt.projet.gestion_conge.Services.DemandeCongeService;
 import sn.uidt.projet.gestion_conge.entities.DemandeConge;
+import sn.uidt.projet.gestion_conge.services.DemandeCongeService;
 
 @RestController
 @RequestMapping("/api/demandes-conges")
@@ -28,7 +28,7 @@ public class DemandeCongeController {
     //Creer une demande
     @PostMapping("/create")
     public ResponseEntity<DemandeConge> creerDemande(@RequestBody DemandeConge demande) {
-        DemandeConge demandeConge = demandeCongeService.creerDemandeConge(demande.getUser(), demande.getDateDebut(), demande.getDateFin(), demande.getTypeConge());
+        DemandeConge demandeConge = demandeCongeService.creerDemandeConge(demande.getUser(), demande.getDateDebut(), demande.getDateFin(), demande.getTypeConge(), demande.getJustificationUrl());
 
         return ResponseEntity.ok(demandeConge);
     }
