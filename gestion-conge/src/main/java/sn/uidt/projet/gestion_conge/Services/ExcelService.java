@@ -37,13 +37,14 @@ public class ExcelService {
                 user.setPrenom(row.getCell(1).getStringCellValue());
                 user.setEmail(row.getCell(2).getStringCellValue());
                 user.setMatricule(row.getCell(3).getStringCellValue());
-                user.setTelephone(String.valueOf((long) row.getCell(4).getNumericCellValue()));
-                String roleExtraite = row.getCell(5).getStringCellValue().trim();
+                user.setPoste(row.getCell(4).getStringCellValue());
+                user.setTelephone(String.valueOf((long) row.getCell(5).getNumericCellValue()));
+                String roleExtraite = row.getCell(6).getStringCellValue().trim();
                 user.setRole(Role.valueOf(roleExtraite));
-                if (row.getCell(6) != null) {
+                if (row.getCell(7) != null) {
                     try {
                         // On récupère la date au format classique Excel/Java
-                        java.util.Date dateExcel = row.getCell(6).getDateCellValue();
+                        java.util.Date dateExcel = row.getCell(7).getDateCellValue();
 
                         // On convertit java.util.Date en java.time.LocalDate
                         java.time.LocalDate dateConvertie = dateExcel.toInstant()
@@ -59,7 +60,7 @@ public class ExcelService {
                     // Si la cellule est vide
                     user.setDateEmbauche(java.time.LocalDate.now());
                 }
-                String nomDepartement = row.getCell(7).getStringCellValue();
+                String nomDepartement = row.getCell(8).getStringCellValue();
                 Departement dept = departementRepository.findByNom(nomDepartement).orElseThrow(() -> new RuntimeException("Departement introuvable"));
 
 // 3. Associer le département à l'utilisateur

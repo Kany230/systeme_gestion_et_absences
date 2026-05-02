@@ -53,30 +53,48 @@ public class DemandeCongeService {
     }
 
     //Soumettre une demande de conge
-    public DemandeConge creerDemandeConge(User user, LocalDate debut, LocalDate fin, TypeConge typeConge, String justificationUrl) {
+    public DemandeConge creerDemandeConge(Long userId, LocalDate debut, LocalDate fin, TypeConge typeConge, String justificationUrl) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
         double duree = calculerJoursOuvrable(debut, fin);
 
         // 1. Vérification de la justification obligatoire
         if (Boolean.TRUE.equals(typeConge.getDemandeJustification())) {
             if (justificationUrl == null || justificationUrl.trim().isEmpty()) {
-                throw new RuntimeException("Un document justificatif (PDF ou Image) est obligatoire pour ce type de congé.");
+                throw new RuntimeException("Un document justificatif est obligatoire pour ce type de congé.");
             }
         }
-        //Verification du solde de conge
+
+        // 2. Vérification du solde
         if (Boolean.TRUE.equals(typeConge.getEstDeductible()) && user.getCompteursConges().getSoldeAn() < duree) {
             throw new RuntimeException("Solde de conge insuffisant");
         }
 
-        User user1 = userRepository.findById(user.getId()).get();
-
         DemandeConge demandeConge = new DemandeConge();
-        demandeConge.setUser(user1);
+        demandeConge.setUser(user);
         demandeConge.setDateDebut(debut);
         demandeConge.setDateFin(fin);
         demandeConge.setTypeConge(typeConge);
         demandeConge.setJustificationUrl(justificationUrl);
         demandeConge.setNombreJoursDeduit(duree);
-        demandeConge.setStatut("en_attente_chef_equipe");
+
+        // 3. Logique dynamique du statut initial
+        String role = user.getRole().name(); // On récupère le rôle (Enum ou String)
+
+        switch (role) {
+            case "EMPLOYE" -> // L'employé doit être validé par son Chef de département (CHEF_EQUIPE)
+                demandeConge.setStatut("en_attente_chef_equipe");
+
+            case "CHEF_EQUIPE" -> // Le chef de département doit être validé par le Manager ou DRH
+                // Selon ta logique : "Manager puis DRH"
+                demandeConge.setStatut("en_attente_manager");
+
+            case "MANAGER" -> // Le manager va directement chez le DRH
+                demandeConge.setStatut("en_attente_drh");
+
+            default ->
+                demandeConge.setStatut("en_attente_drh");
+        }
 
         return demandeCongeRepository.save(demandeConge);
     }

@@ -1,11 +1,15 @@
 package sn.uidt.projet.gestion_conge.controllers;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,19 +22,51 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import sn.uidt.projet.gestion_conge.config.JwtUtils;
 import sn.uidt.projet.gestion_conge.entities.User;
 import sn.uidt.projet.gestion_conge.services.ExcelService;
 import sn.uidt.projet.gestion_conge.services.UserService;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = "*")
 public class UserController {
 
     @Autowired
     private UserService userService;
     @Autowired
     private ExcelService excelService;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtUtils jwtUtils;
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody Map<String, String> loginRequest) {
+        try {
+            // 1. Authentification manuelle
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.get("email"),
+                            loginRequest.get("password")
+                    )
+            );
+
+            // 2. Si ça réussit, on génère le token
+            String token = jwtUtils.generateToken(loginRequest.get("email"));
+
+            Map<String, String> response = new HashMap<>();
+            response.put("token", token);
+            response.put("username", loginRequest.get("email"));
+
+            return ResponseEntity.ok(response);
+
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Email ou mot de passe incorrect"));
+        }
+    }
 
     //Creer un utilisateur
     @PostMapping("/creer")
@@ -73,7 +109,7 @@ public class UserController {
         return userService.ListeParMonEquipe(id);
     }
 
-    //Lister tous les membres d'un equipe
+    //Lister tous les membres d'un departement
     @GetMapping("/departement/{id}")
     public List<User> getDepartement(@PathVariable Long id) {
         return userService.ListeParDepartement(id);
@@ -93,12 +129,10 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/modifier-mdp")
-    public ResponseEntity<String> updatePassword(@PathVariable Long id, @RequestBody Map<String, String> passwords) {
-
-        String ancienMdp = passwords.get("ancienMdp");
-        String newMdp = passwords.get("newMdp");
-
-        userService.modifierMotDePasse(id, ancienMdp, newMdp);
+    public ResponseEntity<String> updatePassword(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+        String oldPw = payload.get("oldPassword");
+        String newPw = payload.get("newPassword");
+        userService.modifierMotDePasse(id, oldPw, newPw);
         return ResponseEntity.ok("Mot de passe mis à jour");
     }
 

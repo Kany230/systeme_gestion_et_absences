@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,7 +18,6 @@ import sn.uidt.projet.gestion_conge.services.JourFerieService;
 
 @RestController
 @RequestMapping("/api/jours-feries")
-@CrossOrigin(origins = "*")
 public class JourFerieController {
 
     @Autowired

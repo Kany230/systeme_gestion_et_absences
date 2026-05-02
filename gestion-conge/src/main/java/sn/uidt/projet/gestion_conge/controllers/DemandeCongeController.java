@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +18,6 @@ import sn.uidt.projet.gestion_conge.services.DemandeCongeService;
 
 @RestController
 @RequestMapping("/api/demandes-conges")
-@CrossOrigin(origins = "*")
 public class DemandeCongeController {
 
     @Autowired
@@ -28,7 +26,9 @@ public class DemandeCongeController {
     //Creer une demande
     @PostMapping("/create")
     public ResponseEntity<DemandeConge> creerDemande(@RequestBody DemandeConge demande) {
-        DemandeConge demandeConge = demandeCongeService.creerDemandeConge(demande.getUser(), demande.getDateDebut(), demande.getDateFin(), demande.getTypeConge(), demande.getJustificationUrl());
+
+        Long userId = demande.getUser().getId();
+        DemandeConge demandeConge = demandeCongeService.creerDemandeConge(userId, demande.getDateDebut(), demande.getDateFin(), demande.getTypeConge(), demande.getJustificationUrl());
 
         return ResponseEntity.ok(demandeConge);
     }

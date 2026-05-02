@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,7 +18,6 @@ import sn.uidt.projet.gestion_conge.services.DepartementService;
 
 @RestController
 @RequestMapping("/api/departement")
-@CrossOrigin(origins = "*")
 public class DepartementController {
 
     @Autowired
@@ -57,5 +55,16 @@ public class DepartementController {
     @PutMapping("/{deptId}/chef/{managerId}")
     public ResponseEntity<Departement> assigneChef(@PathVariable Long managerId, @PathVariable Long deptId) {
         return ResponseEntity.ok(departementService.chefDepartement(deptId, managerId));
+    }
+
+    // Modifier un département existant
+    @PutMapping("/modifier/{id}")
+    public ResponseEntity<?> updateDept(@PathVariable Long id, @RequestBody Departement departement) {
+        try {
+            Departement updatedDept = departementService.updateDepartement(id, departement);
+            return ResponseEntity.ok(updatedDept);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

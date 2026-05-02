@@ -1,4 +1,11 @@
 {
+    "java.configuration.runtime": [
+        {
+            "name": "JavaSE-21",
+            "path": "C:/Users/Admin/.jdks/temurin-21.0.4", // Remplace par ton chemin vers le JDK 21
+            "default": true
+        }
+    ],
     "java.compile.nullAnalysis.mode": "automatic",
     "java.configuration.updateBuildConfiguration": "interactive"
 }

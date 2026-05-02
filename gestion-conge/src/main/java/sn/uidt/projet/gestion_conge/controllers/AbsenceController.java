@@ -5,7 +5,6 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +18,6 @@ import sn.uidt.projet.gestion_conge.services.AbsenceService;
 
 @RestController
 @RequestMapping("/api/absences")
-@CrossOrigin(origins = "*")
 public class AbsenceController {
 
     @Autowired
@@ -46,8 +44,8 @@ public class AbsenceController {
 
     //La liste des absences dans une equipe
     @GetMapping("/departement/{departementId}")
-    public List<Absence> listeAbsenceDepartement(@PathVariable Long departementid) {
-        return absenceService.listParDepartement(departementid);
+    public List<Absence> listeAbsenceDepartement(@PathVariable Long departementId) {
+        return absenceService.listParDepartement(departementId);
     }
 
     //La liste des absences dans une equipe

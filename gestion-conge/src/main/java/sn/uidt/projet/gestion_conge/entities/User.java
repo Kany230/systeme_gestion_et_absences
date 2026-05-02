@@ -38,8 +38,9 @@ public class User {
     private String email;
     private String matricule;
     private String telephone;
+    @Column(nullable = false)
+    private String poste;
     @Column(length = 255)
-
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 

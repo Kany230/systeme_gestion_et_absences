@@ -68,4 +68,17 @@ public class DepartementService {
         return departementRepository.save(departement);
     }
 
+    public Departement updateDepartement(Long id, Departement details) {
+
+        Departement departementt = departementRepository.findById(id).orElseThrow(() -> new RuntimeException("Département introuvable avec l'id : " + id));
+
+        if (!departementt.getNom().equals(details.getNom()) && departementRepository.existsByNom(details.getNom())) {
+            throw new RuntimeException("Un autre département porte déjà ce nom");
+        }
+
+        departementt.setNom(details.getNom());
+        departementt.setCode(details.getCode());
+
+        return departementRepository.save(departementt);
+    }
 }

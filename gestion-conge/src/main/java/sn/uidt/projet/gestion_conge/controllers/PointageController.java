@@ -4,19 +4,17 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import sn.uidt.projet.gestion_conge.services.PointageService;
 import sn.uidt.projet.gestion_conge.entities.Pointage;
+import sn.uidt.projet.gestion_conge.services.PointageService;
 
 @RestController
 @RequestMapping("/api/pointages")
-@CrossOrigin(origins = "*")
 public class PointageController {
 
     @Autowired

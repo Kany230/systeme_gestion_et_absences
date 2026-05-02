@@ -32,7 +32,12 @@ public class JourFerieService {
                 creerObjet(LocalDate.of(annee, 1, 1), "Jour de l'an"),
                 creerObjet(LocalDate.of(annee, 4, 4), "Fête de l'Indépendance"),
                 creerObjet(LocalDate.of(annee, 5, 1), "Fête du Travail"),
-                creerObjet(LocalDate.of(annee, 12, 25), "Noël")
+                creerObjet(LocalDate.of(annee, 12, 25), "Noël"),
+                creerObjet(LocalDate.of(annee, 8, 15), "Assomption"),
+                creerObjet(LocalDate.of(annee, 11, 1), "Toussaint"),
+                creerObjet(LocalDate.of(annee, 12, 25), "Noël"),
+                creerObjet(LocalDate.of(annee, 5, 25), "Pentecote"),
+                creerObjet(LocalDate.of(annee, 4, 6), "Paques")
         );
 
         for (JourFerie jf : feteFixes) {
