@@ -8,6 +8,7 @@ import java.util.function.Function;
 
 import javax.crypto.SecretKey;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -19,12 +20,12 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class JwtUtils {
 
-    // La clé doit être assez longue pour HS256 (minimum 32 caractères)
-    private final String SECRET_STRING = "MaCleSecreteTresLonguePourGererLesConges2026!";
+    @Value("${app.jwt.secret}")
+    private String secretKey;
 
     // Méthode utilitaire pour transformer la String en SecretKey sécurisée
     private SecretKey getSigningKey() {
-        byte[] keyBytes = SECRET_STRING.getBytes(StandardCharsets.UTF_8);
+        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 

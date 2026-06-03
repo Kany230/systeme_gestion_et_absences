@@ -12,6 +12,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -55,17 +56,24 @@ public class User {
     @JsonIgnore
     private Departement departement;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_manager")
     @JsonIgnore
     @JsonBackReference // Empêche la boucle infinie lors de la conversion en JSON
     private User manager;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_chef_equipe")
+    @JsonIgnore
+    private User chefEquipe;
+
+    //cascade = CascadeType.ALL : Supprime les enfants automatiquement orphanRemoval = true : Nettoie les références en base de donnees
+    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @JsonIgnore
     private CompteursConges compteursConges;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    //cascade = CascadeType.ALL : Supprime les enfants automatiquement orphanRemoval = true : Nettoie les références en base de donnees
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<DemandeConge> demandeConges;
 

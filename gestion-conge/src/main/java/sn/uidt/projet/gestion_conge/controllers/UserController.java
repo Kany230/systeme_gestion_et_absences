@@ -23,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import sn.uidt.projet.gestion_conge.config.JwtUtils;
-import sn.uidt.projet.gestion_conge.entities.User;
+import sn.uidt.projet.gestion_conge.dto.UserDTO;
+import sn.uidt.projet.gestion_conge.entities.Role;
 import sn.uidt.projet.gestion_conge.services.ExcelService;
 import sn.uidt.projet.gestion_conge.services.UserService;
 
@@ -33,6 +34,7 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
     @Autowired
     private ExcelService excelService;
 
@@ -45,7 +47,6 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> loginRequest) {
         try {
-            // 1. Authentification manuelle
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.get("email"),
@@ -53,12 +54,12 @@ public class UserController {
                     )
             );
 
-            // 2. Si ça réussit, on génère le token
             String token = jwtUtils.generateToken(loginRequest.get("email"));
+            UserDTO userDTO = userService.trouverParEmail(loginRequest.get("email"));
 
-            Map<String, String> response = new HashMap<>();
+            Map<String, Object> response = new HashMap<>();
             response.put("token", token);
-            response.put("username", loginRequest.get("email"));
+            response.put("user", userDTO);
 
             return ResponseEntity.ok(response);
 
@@ -68,78 +69,116 @@ public class UserController {
         }
     }
 
-    //Creer un utilisateur
     @PostMapping("/creer")
-    public ResponseEntity<User> creerUser(@RequestBody User user, @RequestParam(defaultValue = "0.0") Double solde) {
-        User newUser = userService.creerUser(user, solde);
-        return ResponseEntity.ok(newUser);
+    public ResponseEntity<UserDTO> creerUser(
+            @RequestBody Map<String, Object> payload,
+            @RequestParam(defaultValue = "0.0") Double solde) {
+
+        String password = (String) payload.get("password");
+        if (password == null || password.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Long departementId = null;
+        if (payload.get("departementId") != null) {
+            departementId = Long.valueOf(payload.get("departementId").toString());
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
+
+        UserDTO userDto = new UserDTO();
+        userDto.setNom((String) payload.get("nom"));
+        userDto.setPrenom((String) payload.get("prenom"));
+        userDto.setEmail((String) payload.get("email"));
+        userDto.setTelephone((String) payload.get("telephone"));
+        userDto.setPoste((String) payload.get("poste"));
+
+        if (payload.get("role") != null) {
+            String roleStr = ((String) payload.get("role")).toUpperCase().trim();
+            userDto.setRole(Role.valueOf(roleStr));
+        }
+
+        if (payload.get("dateEmbauche") != null) {
+            userDto.setDateEmbauche(java.time.LocalDate.parse((String) payload.get("dateEmbauche")));
+        }
+
+        UserDTO created = userService.creerUser(userDto, solde, password, departementId);
+        return ResponseEntity.ok(created);
     }
 
-    //Importer une liste 
     @PostMapping("/import-excel")
     public ResponseEntity<String> importExcel(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body("Le fichier est vide");
-        }
-
         try {
             excelService.importerUtilisateurs(file.getInputStream());
-            return ResponseEntity.ok("Importation de la liste réussie !");
+            return ResponseEntity.ok("Importation réussie");
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Erreur : " + e.getMessage());
+            return ResponseEntity.status(500).body(e.getMessage());
         }
     }
 
-    //Trouver l'utilisateur
-    @GetMapping("/by-email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
-        User user = userService.trouverParEmail(email);
-        return ResponseEntity.ok(user);
-    }
-
-    //Lister tout le monde
     @GetMapping
-    public List<User> getUsers() {
-        return userService.tousUsers();
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        return ResponseEntity.ok(userService.tousUsers());
     }
 
-    //Lister tous les membres d'un equipe
-    @GetMapping("/manager/{id}")
-    public List<User> getEquipe(@PathVariable Long id) {
-        return userService.ListeParMonEquipe(id);
+    @GetMapping("/by-email/{email}")
+    public ResponseEntity<UserDTO> getUserByEmail(@PathVariable String email) {
+        return ResponseEntity.ok(userService.trouverParEmail(email));
     }
 
-    //Lister tous les membres d'un departement
-    @GetMapping("/departement/{id}")
-    public List<User> getDepartement(@PathVariable Long id) {
-        return userService.ListeParDepartement(id);
+    @GetMapping("/manager/{managerId}")
+    public ResponseEntity<List<UserDTO>> getEquipe(@PathVariable Long managerId) {
+        return ResponseEntity.ok(userService.ListeParMonEquipe(managerId));
     }
 
-    //Assigner un manager a un employe
-    @PutMapping("/{userId}/assigner-manager/{managerId}")
-    public ResponseEntity<String> assignerManager(@PathVariable Long userId, @PathVariable Long managerId) {
-        userService.assignerManger(userId, managerId);
-        return ResponseEntity.ok("Assignation faite");
+    @GetMapping("/chef-equipe/{deptId}")
+    public ResponseEntity<List<UserDTO>> getByChefEquipe(@PathVariable Long deptId) {
+        return ResponseEntity.ok(userService.getByEquipe(deptId));
     }
 
-    //Modifier un utilisateur
+    @GetMapping("/departement/{deptId}/managers")
+    public ResponseEntity<List<UserDTO>> getManagersByDept(@PathVariable Long deptId) {
+        return ResponseEntity.ok(userService.getManagersParDepartement(deptId));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.trouverParId(id));
+    }
+
+    @PutMapping("/{userId}/assigner-manager/{chefId}")
+    public ResponseEntity<String> assignerManager(
+            @PathVariable Long userId,
+            @PathVariable Long chefId,
+            @RequestParam Long managerId) {
+        userService.assignerManager(userId, chefId, managerId);
+        return ResponseEntity.ok("Assignation effectuée");
+    }
+
     @PutMapping("/modifier/{id}")
-    public ResponseEntity<User> update(@PathVariable Long id, @RequestBody User user) {
-        return ResponseEntity.ok(userService.modifierUser(id, user));
+    public ResponseEntity<UserDTO> update(
+            @PathVariable Long id,
+            @RequestBody UserDTO userDto) {
+        return ResponseEntity.ok(userService.modifierUser(id, userDto));
     }
 
     @PatchMapping("/{id}/modifier-mdp")
-    public ResponseEntity<String> updatePassword(@PathVariable Long id, @RequestBody Map<String, String> payload) {
-        String oldPw = payload.get("oldPassword");
-        String newPw = payload.get("newPassword");
-        userService.modifierMotDePasse(id, oldPw, newPw);
+    public ResponseEntity<String> updatePassword(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload) {
+
+        userService.modifierMotDePasse(
+                id,
+                payload.get("oldPassword"),
+                payload.get("newPassword")
+        );
+
         return ResponseEntity.ok("Mot de passe mis à jour");
     }
 
-    //Supprimer un utilisateur
     @DeleteMapping("/supprimer/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         userService.supprimerUser(id);
-        return ResponseEntity.ok("User supprime");
+        return ResponseEntity.ok("Utilisateur supprimé");
     }
 }

@@ -1,6 +1,9 @@
 package sn.uidt.projet.gestion_conge.services;
 
+import java.time.Year;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,7 +13,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
+import sn.uidt.projet.gestion_conge.dto.UserDTO;
+import sn.uidt.projet.gestion_conge.dto.UserMapper;
+import sn.uidt.projet.gestion_conge.entities.Departement;
+import sn.uidt.projet.gestion_conge.entities.Role;
 import sn.uidt.projet.gestion_conge.entities.User;
+import sn.uidt.projet.gestion_conge.repositories.DepartementRepository;
 import sn.uidt.projet.gestion_conge.repositories.UserRepository;
 
 @Service
@@ -18,6 +26,9 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private DepartementRepository departementRepository;
 
     @Autowired
     private CompteursCongesService compteursCongesService;
@@ -28,10 +39,13 @@ public class UserService implements UserDetailsService {
     @Autowired
     private EmailService emailService;
 
-    //Connexion
+    @Autowired
+    private UserMapper userMapper;
+
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("Utilisateur avec l'email " + email + " introuvable"));
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Utilisateur avec l'email " + email + " introuvable"));
 
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())
@@ -40,38 +54,58 @@ public class UserService implements UserDetailsService {
                 .build();
     }
 
-    //Inscription
-    @Transactional
-    public User creerUser(User user, Double soldeInitial) {
-        if (userRepository.existsByEmail(user.getEmail())) {
-            throw new RuntimeException("Cet email existe deja");
+    public UserDTO creerUser(UserDTO userDto, Double soldeInitial, String passwordBrut, Long departementId) {
+
+        if (userRepository.existsByEmail(userDto.getEmail())) {
+            throw new RuntimeException("Un collaborateur possède déjà cette adresse e-mail.");
         }
 
-        String mdpBrut = user.getPassword();
+        User user = userMapper.toEntity(userDto);
 
-        //Encodage du mot de passe avant sauvegarde
-        user.setPassword(passwordEncoder.encode(mdpBrut));
+        String prefixeDepartement = "MAT";
 
-        User enregistreUser = userRepository.save(user);
+        if (departementId != null) {
+            Departement dept = departementRepository.findById(departementId)
+                    .orElseThrow(() -> new RuntimeException("Le département sélectionné est introuvable."));
 
-        //Initialisation automatique du compteur de congrs
-        compteursCongesService.creerOuImporteCompteur(soldeInitial, enregistreUser);
+            user.setDepartement(dept);
+
+            String nomDeptNettoye = dept.getNom().trim().replaceAll("[^a-zA-Z]", "").toUpperCase();
+            if (nomDeptNettoye.length() >= 3) {
+                prefixeDepartement = nomDeptNettoye.substring(0, 3);
+            } else if (!nomDeptNettoye.isEmpty()) {
+                prefixeDepartement = nomDeptNettoye;
+            }
+        } else {
+            throw new RuntimeException("L'affectation d'un département est obligatoire pour générer le matricule.");
+        }
+
+        String anneeCourante = String.valueOf(Year.now().getValue());
+        String identifiantUnique = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+
+        String matriculeAutomatique = prefixeDepartement + "-" + anneeCourante + "-" + identifiantUnique;
+        user.setMatricule(matriculeAutomatique);
+
+        user.setPassword(passwordEncoder.encode(passwordBrut));
+
+        User userEnregistre = userRepository.save(user);
+
+        compteursCongesService.creerOuImporteCompteur(soldeInitial, userEnregistre);
 
         try {
-            emailService.envoyerEmailBienvenue(user.getEmail(), user.getPrenom(), mdpBrut);
+            emailService.envoyerEmailBienvenue(userEnregistre.getEmail(), userEnregistre.getPrenom(), passwordBrut);
         } catch (Exception e) {
-            System.err.println("Erreur d'envoi d'email : " + e.getMessage());
+            System.err.println("Avertissement : Impossible d'envoyer l'e-mail à l'adresse "
+                    + userEnregistre.getEmail() + ". Détail : " + e.getMessage());
         }
 
-        return enregistreUser;
+        return userMapper.toDTO(userEnregistre);
     }
 
-    //Importation excel
     @Transactional
     public void importerUser(List<User> users) {
         for (User u : users) {
             if (!userRepository.existsByEmail(u.getEmail())) {
-                //On definie MDP par defaut
                 String rawPassword = (u.getPassword() != null) ? u.getPassword() : "Passer123";
                 u.setPassword(passwordEncoder.encode(rawPassword));
 
@@ -82,29 +116,76 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public void assignerManger(Long userId, Long managerId) {
-        if (userId.equals(managerId)) {
-            throw new RuntimeException("Un employe ne peut pas etre son propre chef");
+    public void assignerManager(Long userId, Long chefId, Long managerId) {
+
+        User managerConnecte = userRepository.findById(managerId).orElseThrow(() -> new RuntimeException("Manager introuvable"));
+
+        if (managerConnecte.getRole() != Role.manager) {
+            throw new RuntimeException("Seul un manager peut assigner un chef d'équipe");
         }
 
-        User employe = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Employe introuvable"));
+        if (userId.equals(chefId)) {
+            throw new RuntimeException("Un employé ne peut pas être son propre chef d'équipe");
+        }
 
-        User manager = userRepository.findById(managerId).orElseThrow(() -> new RuntimeException("Manager introuvable"));
+        User employe = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Employé introuvable avec l'ID : " + userId));
 
-        employe.setManager(manager);
+        User chefEquipe = userRepository.findById(chefId).orElseThrow(() -> new RuntimeException("Chef d'Équipe introuvable avec l'ID : " + chefId));
+
+        if (chefEquipe.getRole() != Role.chef_equipe) {
+            throw new RuntimeException("L'utilisateur sélectionné n'est pas un Chef d'Équipe");
+        }
+
+        if (!employe.getDepartement().getId().equals(chefEquipe.getDepartement().getId())) {
+            throw new RuntimeException("Le chef d'équipe doit appartenir au même département");
+        }
+
+        if (!employe.getDepartement().getId().equals(managerConnecte.getDepartement().getId())) {
+            throw new RuntimeException("Vous ne pouvez assigner que des employés de votre département");
+        }
+
+        employe.setChefEquipe(chefEquipe);
         userRepository.save(employe);
     }
 
-    public List<User> tousUsers() {
-        return userRepository.findAll();
+    public List<UserDTO> tousUsers() {
+        return userRepository.findAll().stream()
+                .map(userMapper::toDTO)
+                .collect(Collectors.toList());
     }
 
-    public List<User> ListeParDepartement(Long departementId) {
-        return userRepository.findByDepartementId(departementId);
+    public List<UserDTO> ListeParMonEquipe(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'ID : " + userId));
+
+        return userRepository.findByDepartementId(user.getDepartement().getId())
+                .stream()
+                .map(userMapper::toDTO)
+                .collect(Collectors.toList());
+
     }
 
-    public List<User> ListeParMonEquipe(Long managerId) {
-        return userRepository.findByManagerId(managerId);
+    public List<UserDTO> getByEquipe(Long chefId) {
+        return userRepository.findByChefEquipeId(chefId).stream()
+                .map(userMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<UserDTO> getManagersParDepartement(Long deptId) {
+        return userRepository.findManagersByDepartement(deptId).stream()
+                .map(userMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public UserDTO trouverParId(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        return userMapper.toDTO(user);
+    }
+
+    public UserDTO trouverParEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'email : " + email));
+        return userMapper.toDTO(user);
     }
 
     @Transactional
@@ -112,52 +193,50 @@ public class UserService implements UserDetailsService {
         if (!userRepository.existsById(id)) {
             throw new RuntimeException("Utilisateur introuvable");
         }
+        userRepository.detachSubordinates(id);
+        userRepository.detachChefEquipe(id);
+        userRepository.supprimerPointages(id);
         userRepository.deleteById(id);
     }
 
     @Transactional
-    public User modifierUser(Long userId, User details) {
+    public UserDTO modifierUser(Long userId, UserDTO detailsDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
 
-        user.setNom(details.getNom());
-        user.setPrenom(details.getPrenom());
-        user.setEmail(details.getEmail());
-        user.setMatricule(details.getMatricule());
-        user.setDateEmbauche(details.getDateEmbauche());
-        user.setTelephone(details.getTelephone());
-        user.setRole(details.getRole());
-        user.setDepartement(details.getDepartement());
-        user.setPoste(details.getPoste());
+        user.setNom(detailsDto.getNom());
+        user.setPrenom(detailsDto.getPrenom());
+        user.setEmail(detailsDto.getEmail());
+        user.setRole(detailsDto.getRole());
 
-        return userRepository.save(user);
+        if (detailsDto.getMatricule() != null) {
+            user.setMatricule(detailsDto.getMatricule());
+        }
+        if (detailsDto.getTelephone() != null) {
+            user.setTelephone(detailsDto.getTelephone());
+        }
+        if (detailsDto.getPoste() != null) {
+            user.setPoste(detailsDto.getPoste());
+        }
+        if (detailsDto.getDateEmbauche() != null) {
+            user.setDateEmbauche(detailsDto.getDateEmbauche());
+        }
+
+        User misAJour = userRepository.save(user);
+        return userMapper.toDTO(misAJour);
     }
 
-    public User trouverParEmail(String email) {
-        return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'email : " + email));
-    }
-
-    /**
-     * Modifie le mot de passe d'un utilisateur.
-     *
-     * @param userId ID de l'utilisateur
-     * @param ancienMdp Mot de passe actuel (peut être null si c'est un admin
-     * qui force le changement)
-     * @param nouveauMdp Nouveau mot de passe à encoder
-     */
     @Transactional
     public void modifierMotDePasse(Long userId, String ancienMdp, String newMdp) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
 
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
-
-        //Si un ancien mot de passe est fourni, on verifie s'il correspond
         if (ancienMdp != null) {
             if (!passwordEncoder.matches(ancienMdp, user.getPassword())) {
                 throw new RuntimeException("L'ancien mot de passe est incorrect");
             }
         }
 
-        // Hachage et mise à jour du nouveau mot de passe
         user.setPassword(passwordEncoder.encode(newMdp));
         userRepository.save(user);
     }

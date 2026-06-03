@@ -1,11 +1,16 @@
 package sn.uidt.projet.gestion_conge.services;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import sn.uidt.projet.gestion_conge.entities.Absence;
 import sn.uidt.projet.gestion_conge.entities.DemandeConge;
@@ -21,6 +26,8 @@ public class AbsenceService {
 
     @Autowired
     private DemandeCongeRepository demandeCongeRepository;
+
+    private final String UPLOAD_DIR = "uploads/justificatifs/";
 
     @Scheduled(cron = "0 0 8 * * *")//tous les jours à 08h
     public void detecterAbsence() {
@@ -41,17 +48,34 @@ public class AbsenceService {
         }
     }
 
-    public Absence justifierAbsence(Long absenceId, String motifAbsence, String justificationUrl) {
+    // Assurez-vous que le paramètre s'appelle bien "file" ici 👇
+    public Absence justifierAbsence(Long absenceId, String motifAbsence, MultipartFile file) {
+        Absence absence = absenceRepository.findById(absenceId).orElseThrow(() -> new RuntimeException("L'absence n'a pas été trouvée"));
 
-        Absence abscence = absenceRepository.findById(absenceId).orElseThrow(() -> new RuntimeException("L'utilisateur n'est pas trouvée"));
+        try {
+            Path uploadPath = Paths.get(UPLOAD_DIR);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
 
-        //Mis à jour des informations
-        abscence.setMotifJustifie(motifAbsence);
-        abscence.setJustificationUrl(justificationUrl);
-        abscence.setStatut(StatutAbsence.justifie);
+            //Remplacer fichier.getOriginalFilename() par file.getOriginalFilename()
+            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            Path filePath = uploadPath.resolve(fileName);
 
-        return absenceRepository.save(abscence);
+            //Remplacer fichier.getInputStream() par file.getInputStream()
+            Files.copy(file.getInputStream(), filePath);
 
+            String justificationUrl = "/uploads/justificatifs/" + fileName;
+
+            absence.setMotifJustifie(motifAbsence);
+            absence.setJustificationUrl(justificationUrl);
+            absence.setStatut(StatutAbsence.justifie);
+
+            return absenceRepository.save(absence);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de l'enregistrement du fichier : " + e.getMessage());
+        }
     }
 
     //Lister les absences d'un utilisateur
@@ -61,7 +85,7 @@ public class AbsenceService {
 
     //Lister les absences d'une equipe
     public List<Absence> listParEquipe(Long managerId) {
-        return absenceRepository.findByManagerId(managerId);
+        return absenceRepository.findByDepartementId(managerId);
     }
 
     //Lister les absences d'un departement

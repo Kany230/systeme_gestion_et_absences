@@ -58,6 +58,11 @@ public class DemandeCongeService {
 
         double duree = calculerJoursOuvrable(debut, fin);
 
+        // 0. Vérification du chevauchement
+        if (demandeCongeRepository.existsOverlappingRequest(userId, debut, fin)) {
+            throw new RuntimeException("Vous avez déjà une demande de congé (validée ou en attente) sur cette période.");
+        }
+
         // 1. Vérification de la justification obligatoire
         if (Boolean.TRUE.equals(typeConge.getDemandeJustification())) {
             if (justificationUrl == null || justificationUrl.trim().isEmpty()) {
@@ -82,44 +87,62 @@ public class DemandeCongeService {
         String role = user.getRole().name(); // On récupère le rôle (Enum ou String)
 
         switch (role) {
-            case "EMPLOYE" -> // L'employé doit être validé par son Chef de département (CHEF_EQUIPE)
-                demandeConge.setStatut("en_attente_chef_equipe");
+            case "EMPLOYE" -> {
+                // Vérifier si l'employé a un chef d'équipe
+                if (user.getChefEquipe() != null) {
+                    demandeConge.setStatut("en_attente_chef_equipe");
+                } else if (user.getManager() != null) {
+                    // Pas de chef d'équipe → on saute directement au manager
+                    demandeConge.setStatut("en_attente_manager");
+                } else {
+                    // Ni chef d'équipe ni manager → va directement au DRH
+                    demandeConge.setStatut("en_attente_DRH");
+                }
+            }
 
             case "CHEF_EQUIPE" -> // Le chef de département doit être validé par le Manager ou DRH
                 // Selon ta logique : "Manager puis DRH"
                 demandeConge.setStatut("en_attente_manager");
 
             case "MANAGER" -> // Le manager va directement chez le DRH
-                demandeConge.setStatut("en_attente_drh");
+                demandeConge.setStatut("en_attente_DRH");
 
             default ->
-                demandeConge.setStatut("en_attente_drh");
+                demandeConge.setStatut("en_attente_DRH");
         }
 
         return demandeCongeRepository.save(demandeConge);
     }
 
-    @Transactional //Sert à que toutes les operations dans cette methode reuississent ensemble, sinon on annule tout
-    //Valider une demande de conge
-    public void validerDemandeConge(Long demandeId, String role) {
-        DemandeConge demandeConge = demandeCongeRepository.findById(demandeId).orElseThrow(() -> new RuntimeException("Demande de conge non trouvee"));
+    @Transactional
+    public void validerDemandeConge(Long demandeId
+    ) {
+        DemandeConge demandeConge = demandeCongeRepository.findById(demandeId)
+                .orElseThrow(() -> new RuntimeException("Demande de conge non trouvee"));
 
-        if (role.equals("chef_equipe") && demandeConge.getStatut().equals("en_attente_chef_equipe")) {
+        // Récupération sécurisée des rôles de l'utilisateur connecté
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        List<String> roles = auth.getAuthorities().stream()
+                .map(r -> r.getAuthority().replace("ROLE_", "").toLowerCase())
+                .toList();
+
+        String statutActuel = demandeConge.getStatut();
+
+        if (roles.contains("chef_equipe") && "en_attente_chef_equipe".equals(statutActuel)) {
             demandeConge.setStatut("en_attente_manager");
-        } else if (role.equals("manager") && demandeConge.getStatut().equals("en_attente_manager")) {
+        } else if (roles.contains("manager") && "en_attente_manager".equals(statutActuel)) {
             demandeConge.setStatut("en_attente_DRH");
-        } else if (role.equals("DRH") && demandeConge.getStatut().equals("en_attente_DRH")) {
+        } else if (roles.contains("drh") && "en_attente_DRH".equalsIgnoreCase(statutActuel)) {
             demandeConge.setStatut("validee");
             this.appliquerMajCompteur(demandeConge);
         } else {
-            throw new RuntimeException("Action non autorisee");
+            throw new RuntimeException("Action non autorisée ou statut de la demande incompatible");
         }
 
         demandeCongeRepository.save(demandeConge);
-
     }
-
     //Deduire le solde de conge dans le compteur
+
     public void appliquerMajCompteur(DemandeConge demandeConge) {
         System.out.println("DEBUG: Entrée dans appliquerMajCompteur");
         CompteursConges compteursConges = demandeConge.getUser().getCompteursConges();

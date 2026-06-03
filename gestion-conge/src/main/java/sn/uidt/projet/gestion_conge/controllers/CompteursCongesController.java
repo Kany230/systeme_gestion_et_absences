@@ -27,7 +27,6 @@ public class CompteursCongesController {
         return ResponseEntity.ok(compteurs);
     }
 
-    //Modifier le solde
     @PutMapping("/modifier/{id}")
     public ResponseEntity<String> modifierSolde(@PathVariable Long id, @RequestParam double newSolde, @RequestParam String motif) {
         compteursCongesService.ajouterSoldeParRH(id, newSolde, motif);

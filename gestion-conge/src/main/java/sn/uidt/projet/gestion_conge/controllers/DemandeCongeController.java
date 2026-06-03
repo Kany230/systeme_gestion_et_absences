@@ -10,9 +10,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import sn.uidt.projet.gestion_conge.dto.DemandeCongeDTO;
+import sn.uidt.projet.gestion_conge.dto.DemandeCongeMapper;
 import sn.uidt.projet.gestion_conge.entities.DemandeConge;
 import sn.uidt.projet.gestion_conge.services.DemandeCongeService;
 
@@ -22,22 +23,27 @@ public class DemandeCongeController {
 
     @Autowired
     private DemandeCongeService demandeCongeService;
+    @Autowired
+    private DemandeCongeMapper demandeCongeMapper;
 
     //Creer une demande
     @PostMapping("/create")
-    public ResponseEntity<DemandeConge> creerDemande(@RequestBody DemandeConge demande) {
-
-        Long userId = demande.getUser().getId();
-        DemandeConge demandeConge = demandeCongeService.creerDemandeConge(userId, demande.getDateDebut(), demande.getDateFin(), demande.getTypeConge(), demande.getJustificationUrl());
-
-        return ResponseEntity.ok(demandeConge);
+    public ResponseEntity<DemandeCongeDTO> creerDemande(@RequestBody DemandeConge demande) {
+        DemandeConge result = demandeCongeService.creerDemandeConge(
+                demande.getUser().getId(),
+                demande.getDateDebut(),
+                demande.getDateFin(),
+                demande.getTypeConge(),
+                demande.getJustificationUrl()
+        );
+        return ResponseEntity.ok(demandeCongeMapper.toDTO(result));
     }
 
     //Voir demandesmes 
-    @GetMapping("/mes-demande/{userId}")
-    public List<DemandeConge> voirMesDemande(@PathVariable Long userId) {
+    @GetMapping("/mes-demandes/{userId}")
+    public List<DemandeCongeDTO> voirMesDemande(@PathVariable Long userId) {
 
-        return demandeCongeService.voirMesDemandes(userId);
+        return demandeCongeMapper.toDTOList(demandeCongeService.voirMesDemandes(userId));
     }
 
     //Confirme le retour d'un utilisateur
@@ -57,10 +63,10 @@ public class DemandeCongeController {
         return ResponseEntity.ok("Demande annule");
     }
 
-    @PutMapping("/valider/{id}")
-    public ResponseEntity<String> valideDemande(@PathVariable Long id, @RequestParam String role) {
+    @PostMapping("/valider/{id}")
+    public ResponseEntity<String> valideDemande(@PathVariable Long id) {
 
-        demandeCongeService.validerDemandeConge(id, role);
+        demandeCongeService.validerDemandeConge(id);
 
         return ResponseEntity.ok("Demande validee");
     }
@@ -75,25 +81,22 @@ public class DemandeCongeController {
 
     //Lister des demandes pour le chef d'equipe
     @GetMapping("/chef-equipe/{managerId}")
-    public List<DemandeConge> getDemandeChefEquipe(@PathVariable Long managerId) {
-        return demandeCongeService.vuByChefEquipe(managerId);
+    public List<DemandeCongeDTO> getDemandeChefEquipe(@PathVariable Long managerId) {
+        return demandeCongeMapper.toDTOList(demandeCongeService.vuByChefEquipe(managerId));
     }
 
-    //Lister des demandes pour le chef de departement
     @GetMapping("/departement/{departementId}")
-    public List<DemandeConge> getDemandeChefDepartement(@PathVariable Long departementId) {
-        return demandeCongeService.vuByChefDepartement(departementId);
+    public List<DemandeCongeDTO> getDemandeChefDepartement(@PathVariable Long departementId) {
+        return demandeCongeMapper.toDTOList(demandeCongeService.vuByChefDepartement(departementId));
     }
 
-    //Lister des demandes pour le DRH
     @GetMapping("/demande/drh")
-    public List<DemandeConge> getDemandeDRH() {
-        return demandeCongeService.vuByDRH();
+    public List<DemandeCongeDTO> getDemandeDRH() {
+        return demandeCongeMapper.toDTOList(demandeCongeService.vuByDRH());
     }
 
-    //Lister des retours
     @GetMapping("/retours")
-    public List<DemandeConge> getRetour() {
-        return demandeCongeService.lesRetardDeRetours();
+    public List<DemandeCongeDTO> getRetour() {
+        return demandeCongeMapper.toDTOList(demandeCongeService.lesRetardDeRetours());
     }
 }

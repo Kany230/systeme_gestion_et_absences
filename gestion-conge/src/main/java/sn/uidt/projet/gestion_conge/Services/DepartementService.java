@@ -59,9 +59,11 @@ public class DepartementService {
     public Departement chefDepartement(Long departementId, Long managerId) {
         Departement departement = voirDepartement(departementId);
 
-        userRepository.findById(managerId).orElseThrow(() -> new RuntimeException("Utilisateur non trouve"));
-        User chef = userRepository.findById(managerId)
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        User chef = userRepository.findById(managerId).orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        if (chef.getRole() == null || !chef.getRole().name().equalsIgnoreCase("manager")) {
+            throw new RuntimeException("L'utilisateur sélectionné n'a pas les droits de management requis.");
+        }
 
         departement.setManager(chef);
 

@@ -1,18 +1,18 @@
 package sn.uidt.projet.gestion_conge.controllers;
 
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import sn.uidt.projet.gestion_conge.dto.JustificationRequestDTO;
 import sn.uidt.projet.gestion_conge.entities.Absence;
 import sn.uidt.projet.gestion_conge.services.AbsenceService;
 
@@ -54,15 +54,18 @@ public class AbsenceController {
         return absenceService.getAll();
     }
 
-    @PutMapping("/{id}/justifier")
-    public ResponseEntity<?> justifierAbscence(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+    @PutMapping(value = "/{id}/justifier", consumes = {"multipart/form-data"})
+    public ResponseEntity<?> justifierAbscence(@PathVariable Long id, @ModelAttribute JustificationRequestDTO request) {
 
         try {
-            String motif = payload.get("motifJustifie");
-            String justification = payload.get("justificationUrl");
+            if (request.getFile() == null || request.getFile().isEmpty()) {
+                return ResponseEntity.badRequest().body("Le fichier de justificatif est obligatoire.");
+            }
 
-            Absence abscence = absenceService.justifierAbsence(id, motif, justification);
-            return ResponseEntity.ok(abscence);
+            Absence absence = absenceService.justifierAbsence(id, request.getMotifJustifie(), request.getFile());
+
+            return ResponseEntity.ok(absence);
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Erreur : " + e.getMessage());
         }

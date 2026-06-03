@@ -39,6 +39,12 @@ public class PointageController {
         return ResponseEntity.ok("Detection des absences fait");
     }
 
+    // ✅ Ajouter dans PointageController
+    @GetMapping("/user/{userId}")
+    public List<Pointage> listeParUser(@PathVariable Long userId) {
+        return pointageService.ListParUser(userId);
+    }
+
     //Les listes
     @GetMapping("/absence-equipe/{managerId}")
     public List<Pointage> listeParEquipe(@PathVariable Long managerId) {

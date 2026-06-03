@@ -56,28 +56,30 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Utilise la source de config CORS définie plus bas
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((request, response, authException) -> {
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Erreur : Non autorisé");
-                })
-                )
                 .authorizeHttpRequests(auth -> auth
-                // On autorise explicitement les pré-vérifications CORS (OPTIONS)
+                // ✅ OPTIONS en tout premier
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Routes publiques
-                .requestMatchers("/api/users/login", "/api/jours-feries/**", "/error").permitAll()
-                // Restriction DRH
-                .requestMatchers("/api/demandes-conges/demande/drh").hasAnyAuthority("ROLE_DRH", "DRH")
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/users/login").permitAll()
                 .requestMatchers("/api/jours-feries/**").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/api/demandes-conges/demande/drh")
+                .hasAnyAuthority("ROLE_DRH", "DRH")
                 .anyRequest().authenticated()
-                );
-
-        http.authenticationProvider(authenticationProvider());
-        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+                )
+                .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException)
+                        -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Non autorisé")
+                )
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -86,7 +88,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Autorise tes origines de développement
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000/"));
         // Autorise toutes les méthodes
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         // IMPORTANT : Autorise tous les headers pour éviter les blocages sur des headers custom

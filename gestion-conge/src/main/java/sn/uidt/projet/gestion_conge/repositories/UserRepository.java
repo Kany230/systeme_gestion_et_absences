@@ -1,11 +1,15 @@
 package sn.uidt.projet.gestion_conge.repositories;
 
 import java.util.List;
-import java.util.Optional; // Import manquant pour JpaRepository
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.transaction.Transactional;
 import sn.uidt.projet.gestion_conge.entities.User;
 
 @Repository
@@ -13,19 +17,43 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
-    //Permet de trouver le chef de departement
-    Optional<User> findByManager(String managerId);
-
-    //Permet de savoir s'il y'a des users dans le departement
+    // Vérifie s'il y a des users dans le département
     boolean existsByDepartementId(Long departementId);
 
-    //Permet de savoir s'il y'a des users dans le departement
     boolean existsByEmail(String email);
 
-    //Permet de trouver tous les membres d'un departements
+    // Tous les membres d'un département
     List<User> findByDepartementId(Long departementId);
 
-    //Permet de trouver tous les membres d'un equipe d'un departement
+    // Tous les membres d'une équipe (manager)
     List<User> findByManagerId(Long managerId);
 
+    List<User> findByChefEquipeId(Long chefEquipeId);
+
+    // Managers d’un département
+    @Query("SELECT u FROM User u WHERE u.departement.id = :deptId AND u.role = 'manager'")
+    List<User> findManagersByDepartement(@Param("deptId") Long deptId);
+
+    //Detacher les subordonnés d’un manager
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.manager = null WHERE u.manager.id = :managerId")
+    void detachSubordinates(@Param("managerId") Long managerId);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.chefEquipe = null WHERE u.chefEquipe.id = :chefId")
+    void detachChefEquipe(@Param("chefId") Long chefId);
+
+    //Supprimer les pointages d’un utilisateur
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Pointage p WHERE p.user.id = :userId")
+    void supprimerPointages(@Param("userId") Long userId);
+
+    //Detacher les pointages d’un utilisateur
+    @Modifying
+    @Transactional
+    @Query("UPDATE Pointage p SET p.user = null WHERE p.user.id = :userId")
+    void detachPointages(@Param("userId") Long userId);
 }

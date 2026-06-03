@@ -41,6 +41,11 @@ public interface DemandeCongeRepository extends JpaRepository<DemandeConge, Long
     @Query("SELECT d FROM DemandeConge d WHERE d.statut = 'validee'" + " AND :date BETWEEN d.dateDebut AND d.dateFin")
     List<DemandeConge> findAllAbsent(LocalDate date);
 
+    @Query("SELECT COUNT(d) > 0 FROM DemandeConge d WHERE d.user.id = :userId " +
+           "AND d.statut NOT IN ('refusee', 'annulee') " +
+           "AND d.dateDebut <= :dateFin AND d.dateFin >= :dateDebut")
+    boolean existsOverlappingRequest(Long userId, LocalDate dateDebut, LocalDate dateFin);
+
     @Query("SELECT d FROM DemandeConge d WHERE d.statut = 'validee' " + " AND d.dateFin < :date AND d.retourConfirme = false")
     List<DemandeConge> findRetards(LocalDate date);
 }
