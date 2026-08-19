@@ -10,8 +10,8 @@ export interface Absence {
 }
 
 export enum StatutAbsence{
-  justifie = 0,
-  pas_justifie = 1
+  justifie = "justifie",
+  pas_justifie = "pas_justifie"
 }
 
 export interface User {

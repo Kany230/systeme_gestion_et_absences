@@ -1,6 +1,6 @@
 
 
-const API_URL = "http://localhost:8080/gestion-conge/api/historique";
+const API_URL = "http://localhost:8080/conge-absence/api/historique";
 
 // Fonction utilitaire pour récupérer les headers avec le token à jour
 const getAuthHeaders = () => {

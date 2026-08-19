@@ -1,5 +1,5 @@
 // URL de base correspondant à votre @RequestMapping("/api/jours-feries")
-const HOLIDAY_API_URL = "http://localhost:8080/gestion-conge/api/jours-feries";
+const HOLIDAY_API_URL = "http://localhost:8080/conge-absence/api/jours-feries";
 
 interface Holiday {
   id: number;

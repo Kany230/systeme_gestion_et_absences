@@ -1,6 +1,6 @@
 import { Attendance, StatutPointage } from "@/data/pointage";
 
-const API_URL = "http://localhost:8080/gestion-conge/api/pointages";
+const API_URL = "http://localhost:8080/conge-absence/api/pointages";
 
 // Toujours utiliser une fonction pour récupérer le token le plus récent
 const getAuthHeaders = () => {
@@ -21,8 +21,14 @@ export const attendanceService = {
       headers: getAuthHeaders(), // Ajouté
     });
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || "Erreur lors du pointage d'arrivée");
+      let message = "Erreur lors du pointage d'arrivée";
+    try {
+      const data = await response.json();
+      if (data.message) message = data.message;
+    } catch {
+      // JSON non parseable, on garde le message par défaut
+    }
+    throw new Error(message);
     }
     return response.json();
   },
@@ -36,8 +42,14 @@ export const attendanceService = {
       headers: getAuthHeaders(), // Ajouté
     });
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || "Erreur lors du pointage de départ");
+      let message = "Erreur lors du pointage de separt";
+    try {
+      const data = await response.json();
+      if (data.message) message = data.message;
+    } catch {
+      // JSON non parseable, on garde le message par défaut
+    }
+    throw new Error(message);
     }
     return response.json();
   },

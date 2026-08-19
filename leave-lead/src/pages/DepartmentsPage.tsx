@@ -3,63 +3,80 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter 
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { PageHeader } from "@/components/common/PageHeader";
-import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  Building2, 
-  Loader2, 
-  UserCheck, 
-  AlertCircle 
+import { useAuth } from "@/context/AuthContext";
+import {
+  Plus, Pencil, Trash2, Building2, Loader2,
+  UserCheck, AlertCircle, Search, Users,
 } from "lucide-react";
 import { toast } from "sonner";
-
-// Services et Types
 import { departmentService } from "@/api/departementService";
 import { Department } from "@/data/departments";
 import { User } from "@/data/users";
 
-// /!\ À ADAPTER : Importez votre système d'authentification (Context, hook maison, Redux, etc.)
-import { useAuth } from "@/context/AuthContext"; 
+// ── Confirmation Dialog ────────────────────────────────────────────────────
+interface ConfirmDialogProps {
+  open: boolean;
+  title: string;
+  description: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  danger?: boolean;
+}
+const ConfirmDialog = ({ open, title, description, onConfirm, onCancel, danger }: ConfirmDialogProps) => (
+  <Dialog open={open} onOpenChange={onCancel}>
+    <DialogContent className="sm:max-w-sm">
+      <DialogHeader>
+        <div className={`h-11 w-11 rounded-xl flex items-center justify-center mb-3 ${danger ? "bg-red-50" : "bg-amber-50"}`}>
+          <AlertCircle className={`h-5 w-5 ${danger ? "text-red-500" : "text-amber-500"}`} />
+        </div>
+        <DialogTitle className="text-base font-bold text-slate-800">{title}</DialogTitle>
+        <p className="text-sm text-slate-500 mt-1">{description}</p>
+      </DialogHeader>
+      <DialogFooter className="gap-2 mt-2">
+        <Button variant="outline" onClick={onCancel} className="border-slate-200">Annuler</Button>
+        <Button
+          onClick={onConfirm}
+          className={danger ? "bg-red-600 hover:bg-red-700 text-white" : "bg-amber-600 hover:bg-amber-700 text-white"}
+        >
+          Confirmer
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
 
+// ── Page ──────────────────────────────────────────────────────────────────
 const DepartmentsPage = () => {
-  // 0. Gestion du rôle de l'utilisateur
-  const { user } = useAuth(); 
-  // Vérifie si le rôle est strictement "DRH" (adaptez selon la structure de votre objet user)
-  const isDRH = user?.role === "DRH"; 
+  const { user } = useAuth();
+  const canManage = user?.role === "DRH" || user?.role === "admin";
 
-  // États pour les données
-  const [items, setItems] = useState<Department[]>([]);
+  const [items, setItems]                         = useState<Department[]>([]);
   const [managersDisponibles, setManagersDisponibles] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingManagers, setLoadingManagers] = useState(false);
+  const [loading, setLoading]                     = useState(true);
+  const [loadingManagers, setLoadingManagers]     = useState(false);
+  const [saving, setSaving]                       = useState(false);
+  const [search, setSearch]                       = useState("");
 
-  // États pour les modales
-  const [open, setOpen] = useState(false);
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  
-  // États pour les formulaires
-  const [editing, setEditing] = useState<Department | null>(null);
-  const [selectedDept, setSelectedDept] = useState<Department | null>(null);
+  // Modals
+  const [open, setOpen]                           = useState(false);
+  const [assignModalOpen, setAssignModalOpen]     = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId]     = useState<number | null>(null);
+
+  // Formulaire
+  const [editing, setEditing]                     = useState<Department | null>(null);
+  const [selectedDept, setSelectedDept]           = useState<Department | null>(null);
   const [selectedManagerId, setSelectedManagerId] = useState<string>("");
-  const [nom, setNom] = useState("");
-  const [code, setCode] = useState("");
+  const [nom, setNom]                             = useState("");
+  const [code, setCode]                           = useState("");
 
-  // 1. Chargement initial des départements uniquement
   const loadData = async () => {
     setLoading(true);
     try {
-      const deptsData = await departmentService.list();
-      setItems(deptsData);
-    } catch (error: any) {
+      setItems(await departmentService.list());
+    } catch {
       toast.error("Erreur lors de la récupération des départements");
     } finally {
       setLoading(false);
@@ -68,234 +85,390 @@ const DepartmentsPage = () => {
 
   useEffect(() => { loadData(); }, []);
 
-  // 2. Gestion CRUD Département (Sécurisée côté client)
+  // ── CRUD ──────────────────────────────────────────────────────────────
   const openNew = () => {
-    if (!isDRH) return toast.error("Action non autorisée");
-    setEditing(null);
-    setNom("");
-    setCode("");
-    setOpen(true);
+    if (!canManage) return toast.error("Action non autorisée");
+    setEditing(null); setNom(""); setCode(""); setOpen(true);
   };
 
   const openEdit = (d: Department) => {
-    if (!isDRH) return toast.error("Action non autorisée");
-    setEditing(d);
-    setNom(d.nom);
-    setCode(d.code || "");
-    setOpen(true);
+    if (!canManage) return toast.error("Action non autorisée");
+    setEditing(d); setNom(d.nom); setCode(d.code || ""); setOpen(true);
   };
 
   const saveDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isDRH) return toast.error("Action non autorisée");
+    if (!canManage) return;
+    setSaving(true);
     try {
       if (editing?.id) {
         await departmentService.update(editing.id, { nom, code });
         toast.success("Département mis à jour");
       } else {
         await departmentService.create({ nom, code });
-        toast.success("Département créé");
+        toast.success("Département créé avec succès");
       }
       setOpen(false);
       loadData();
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (e: any) {
+      toast.error(e.message || "Erreur lors de l'enregistrement");
+    } finally {
+      setSaving(false);
     }
   };
 
   const removeDepartment = async (id: number) => {
-    if (!isDRH) return toast.error("Action non autorisée");
-    if (!confirm("Supprimer ce département ?")) return;
     try {
       await departmentService.delete(id);
-      toast.success("Supprimé avec succès");
+      toast.success("Département supprimé");
+      setConfirmDeleteId(null);
       loadData();
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (e: any) {
+      toast.error(e.message || "Erreur lors de la suppression");
     }
   };
 
-  // 3. Logique d'assignation du Manager
+  // ── Assignation Manager ───────────────────────────────────────────────
   const handleOpenAssign = async (dept: Department) => {
-    if (!isDRH) return toast.error("Action non autorisée");
+    if (!canManage) return toast.error("Action non autorisée");
     setSelectedDept(dept);
     setSelectedManagerId(dept.manager?.id?.toString() || "");
     setAssignModalOpen(true);
-    
     setLoadingManagers(true);
     try {
-      if (dept.id) {
-        const data = await departmentService.getManagersByDept(dept.id);
-        setManagersDisponibles(data);
-      }
-    } catch (error: any) {
-      toast.error("Impossible de charger les managers du département");
+      if (dept.id) setManagersDisponibles(await departmentService.getManagersByDept(dept.id));
+    } catch {
+      toast.error("Impossible de charger les managers");
     } finally {
       setLoadingManagers(false);
     }
   };
 
   const handleAssignSubmit = async () => {
-    if (!isDRH) return toast.error("Action non autorisée");
     if (!selectedDept?.id || !selectedManagerId) return;
+    setSaving(true);
     try {
       await departmentService.assignChef(selectedDept.id, parseInt(selectedManagerId));
       toast.success("Manager assigné avec succès");
       setAssignModalOpen(false);
-      loadData(); 
-    } catch (error: any) {
-      toast.error(error.message);
+      loadData();
+    } catch (e: any) {
+      toast.error(e.message || "Erreur lors de l'assignation");
+    } finally {
+      setSaving(false);
     }
   };
 
+  // ── Filtrage ──────────────────────────────────────────────────────────
+  const filtered = items.filter((d) =>
+    `${d.nom} ${d.code ?? ""}`.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const sansManager = items.filter((d) => !d.manager).length;
+
+  // ── Loading ───────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="flex h-[60vh] items-center justify-center">
+    <div className="h-[60vh] flex flex-col items-center justify-center gap-3">
       <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <p className="text-sm text-slate-400 animate-pulse">Chargement des départements...</p>
     </div>
   );
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Départements"
-        description={`${items.length} structures enregistrées`}
-        actions={
-          /* CONDITION : Le bouton "Nouveau" ne s'affiche 
-            QUE si l'utilisateur possède le rôle DRH 
-          */
-          isDRH && (
-            <Button onClick={openNew} className="bg-blue-600">
-              <Plus className="h-4 w-4 mr-2" />Nouveau
-            </Button>
-          )
-        }
-      />
 
-      {/* GRILLE DES DEPARTEMENTS */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((d) => (
-          <Card key={d.id} className="p-5 border-none shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-start justify-between">
-              <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-                <Building2 className="h-5 w-5" />
-              </div>
-
-              {/* CONDITION : Les boutons d'action de chaque carte 
-                ne s'affichent également QUE pour la DRH 
-              */}
-              {isDRH && (
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => handleOpenAssign(d)} title="Assigner manager">
-                    <UserCheck className="h-4 w-4 text-emerald-600" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => openEdit(d)}>
-                    <Pencil className="h-4 w-4 text-slate-400" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => d.id && removeDepartment(d.id)}>
-                    <Trash2 className="h-4 w-4 text-rose-400" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4">
-              <h3 className="font-bold text-lg text-slate-800">{d.nom}</h3>
-              <p className="text-xs font-medium text-blue-500 uppercase">{d.code || "SANS CODE"}</p>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-slate-50">
-              <p className="text-xs text-slate-500 mb-1 font-medium">Responsable actuel :</p>
-              <div className="flex items-center gap-2">
-                {d.manager ? (
-                  <span className="text-sm font-semibold text-slate-700">
-                    {d.manager.prenom} {d.manager.nom}
-                  </span>
-                ) : (
-                  <span className="text-sm italic text-slate-400">Aucun manager assigné</span>
-                )}
-              </div>
-            </div>
-          </Card>
-        ))}
+      {/* ── En-tête ── */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Départements</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            {items.length} structure{items.length > 1 ? "s" : ""} enregistrée{items.length > 1 ? "s" : ""}
+            {sansManager > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 text-amber-600 font-medium">
+                · <AlertCircle className="h-3 w-3" /> {sansManager} sans responsable
+              </span>
+            )}
+          </p>
+        </div>
+        {canManage && (
+          <Button onClick={openNew} className="bg-blue-600 hover:bg-blue-700 shadow-sm">
+            <Plus className="h-4 w-4 mr-2" /> Nouveau département
+          </Button>
+        )}
       </div>
 
-      {/* CONDITION : Les modales ne sont même pas injectées 
-        dans le DOM si l'utilisateur n'est pas DRH 
-      */}
-      {isDRH && (
+      {/* ── Recherche ── */}
+      {items.length > 3 && (
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Input
+            placeholder="Rechercher un département..."
+            className="pl-10 bg-white border-slate-200 h-10"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      )}
+
+      {/* ── Grille ── */}
+      {filtered.length === 0 ? (
+        <div className="py-20 text-center border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
+          <div className="h-14 w-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <Building2 className="h-6 w-6 text-slate-300" />
+          </div>
+          <p className="text-sm font-medium text-slate-500">Aucun département trouvé</p>
+          {search && (
+            <button onClick={() => setSearch("")}
+              className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium">
+              Effacer la recherche
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((d) => (
+            <Card
+              key={d.id}
+              className="group p-5 border-slate-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-200 overflow-hidden relative"
+            >
+              {/* Bande de couleur en haut */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-t-xl" />
+
+              <div className="flex items-start justify-between mt-1">
+                {/* Icône */}
+                <div className="h-11 w-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
+                  <Building2 className="h-5 w-5 text-blue-600" />
+                </div>
+
+                {/* Actions DRH */}
+                {canManage && (
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button size="icon" variant="ghost"
+                      onClick={() => handleOpenAssign(d)}
+                      title="Assigner un manager"
+                      className="h-8 w-8 hover:bg-emerald-50 hover:text-emerald-600">
+                      <UserCheck className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost"
+                      onClick={() => openEdit(d)}
+                      title="Modifier"
+                      className="h-8 w-8 hover:bg-slate-100">
+                      <Pencil className="h-4 w-4 text-slate-400" />
+                    </Button>
+                    <Button size="icon" variant="ghost"
+                      onClick={() => d.id && setConfirmDeleteId(d.id)}
+                      title="Supprimer"
+                      className="h-8 w-8 hover:bg-red-50 hover:text-red-500">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Infos */}
+              <div className="mt-4">
+                <h3 className="font-bold text-lg text-slate-800 leading-tight">{d.nom}</h3>
+                <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-widest mt-0.5">
+                  {d.code || "Sans code"}
+                </p>
+              </div>
+
+              {/* Manager */}
+              <div className="mt-5 pt-4 border-t border-slate-50">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Responsable
+                </p>
+                {d.manager ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] shrink-0">
+                      {d.manager.prenom?.[0]}{d.manager.nom?.[0]}
+                    </div>
+                    <span className="text-sm font-semibold text-slate-700">
+                      {d.manager.prenom} {d.manager.nom}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-full font-medium">
+                      <AlertCircle className="h-3 w-3" /> Non assigné
+                    </span>
+                    {canManage && (
+                      <button
+                        onClick={() => handleOpenAssign(d)}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+                      >
+                        Assigner
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* ═══════════ MODALS (DRH/Admin uniquement) ═══════════ */}
+      {canManage && (
         <>
-          {/* MODALE : CRÉATION / ÉDITION DÉPARTEMENT */}
+          {/* Modal Créer / Modifier */}
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>{editing ? "Modifier" : "Nouveau"} département</DialogTitle>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <Building2 className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-base font-bold text-slate-800">
+                      {editing ? "Modifier le département" : "Nouveau département"}
+                    </DialogTitle>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {editing ? "Mettez à jour les informations" : "Renseignez les informations du nouveau département"}
+                    </p>
+                  </div>
+                </div>
               </DialogHeader>
-              <form onSubmit={saveDepartment} className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <Label htmlFor="nom">Nom du département</Label>
-                  <Input id="nom" required value={nom} onChange={e => setNom(e.target.value)} />
+
+              <form onSubmit={saveDepartment} className="space-y-4 pt-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="nom" className="text-sm font-semibold text-slate-700">
+                    Nom du département <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="nom" required value={nom}
+                    onChange={(e) => setNom(e.target.value)}
+                    placeholder="Ex : Ressources Humaines, Informatique..."
+                    className="border-slate-200 h-10"
+                    disabled={saving}
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="code">Code</Label>
-                  <Input id="code" value={code} onChange={e => setCode(e.target.value)} />
+                <div className="space-y-1.5">
+                  <Label htmlFor="code" className="text-sm font-semibold text-slate-700">
+                    Code <span className="text-slate-400 font-normal">(optionnel)</span>
+                  </Label>
+                  <Input
+                    id="code" value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="Ex : RH, IT, FIN..."
+                    className="border-slate-200 h-10"
+                    disabled={saving}
+                  />
                 </div>
-                <Button type="submit" className="w-full bg-blue-600">Enregistrer</Button>
+
+                <DialogFooter className="gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setOpen(false)}
+                    disabled={saving} className="border-slate-200">
+                    Annuler
+                  </Button>
+                  <Button type="submit" disabled={saving || !nom.trim()}
+                    className="bg-blue-600 hover:bg-blue-700">
+                    {saving
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enregistrement...</>
+                      : editing ? "Mettre à jour" : "Créer le département"}
+                  </Button>
+                </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
 
-          {/* MODALE : ASSIGNATION MANAGER */}
+          {/* Modal Assigner Manager */}
           <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Assigner responsable : {selectedDept?.nom}</DialogTitle>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                    <UserCheck className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-base font-bold text-slate-800">
+                      Assigner un responsable
+                    </DialogTitle>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Département : <span className="font-semibold text-slate-600">{selectedDept?.nom}</span>
+                    </p>
+                  </div>
+                </div>
               </DialogHeader>
-              
-              <div className="py-4 space-y-4">
+
+              <div className="py-3 space-y-4">
                 {loadingManagers ? (
-                  <div className="flex flex-col items-center py-6 gap-2">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                    <p className="text-xs text-slate-500">Recherche des managers éligibles...</p>
+                  <div className="flex flex-col items-center py-8 gap-3">
+                    <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+                    <p className="text-xs text-slate-400 animate-pulse">Chargement des managers éligibles...</p>
                   </div>
                 ) : managersDisponibles.length > 0 ? (
                   <div className="space-y-2">
-                    <Label>Collaborateurs éligibles (déjà dans le service)</Label>
-                    <select 
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={selectedManagerId}
-                      onChange={(e) => setSelectedManagerId(e.target.value)}
-                    >
-                      <option value="">-- Sélectionner un manager --</option>
-                      {managersDisponibles.map(m => (
-                        <option key={m.id} value={m.id}>
-                          {m.prenom} {m.nom} ({m.role})
-                        </option>
+                    <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Managers disponibles dans ce département
+                    </Label>
+                    <div className="space-y-2 max-h-52 overflow-y-auto">
+                      {managersDisponibles.map((m) => (
+                        <label
+                          key={m.id}
+                          className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                            selectedManagerId === String(m.id)
+                              ? "border-emerald-300 bg-emerald-50"
+                              : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="manager"
+                            value={m.id}
+                            checked={selectedManagerId === String(m.id)}
+                            onChange={() => setSelectedManagerId(String(m.id))}
+                            className="accent-emerald-600"
+                          />
+                          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-[10px] shrink-0">
+                            {m.prenom?.[0]}{m.nom?.[0]}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">{m.prenom} {m.nom}</p>
+                            <p className="text-[10px] text-slate-400 uppercase font-medium">{m.role}</p>
+                          </div>
+                        </label>
                       ))}
-                    </select>
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-lg text-amber-800 text-sm">
-                    <AlertCircle className="h-5 w-5 shrink-0 text-amber-500" />
-                    <p>
-                      <strong>Aucun candidat trouvé.</strong><br />
-                      Seuls les employés ayant un rôle de <b>Manager</b> et affectés au département <b>{selectedDept?.nom}</b> peuvent être sélectionnés.
-                    </p>
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                    <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="text-sm text-amber-800">
+                      <p className="font-semibold mb-1">Aucun manager trouvé</p>
+                      <p className="text-xs">Seuls les employés avec le rôle <b>Manager</b> affectés au département <b>{selectedDept?.nom}</b> peuvent être sélectionnés.</p>
+                    </div>
                   </div>
                 )}
               </div>
 
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAssignModalOpen(false)}>Annuler</Button>
-                <Button 
-                  disabled={loadingManagers || managersDisponibles.length === 0 || !selectedManagerId} 
-                  onClick={handleAssignSubmit} 
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setAssignModalOpen(false)}
+                  disabled={saving} className="border-slate-200">
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleAssignSubmit}
+                  disabled={saving || loadingManagers || managersDisponibles.length === 0 || !selectedManagerId}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
-                  Confirmer l'assignation
+                  {saving
+                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Assignation...</>
+                    : <><UserCheck className="h-4 w-4 mr-2" />Confirmer l'assignation</>}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Dialog confirmation suppression */}
+          <ConfirmDialog
+            open={confirmDeleteId !== null}
+            title="Supprimer ce département ?"
+            description="Cette action est irréversible. Les employés rattachés à ce département devront être réaffectés."
+            danger
+            onConfirm={() => confirmDeleteId && removeDepartment(confirmDeleteId)}
+            onCancel={() => setConfirmDeleteId(null)}
+          />
         </>
       )}
     </div>

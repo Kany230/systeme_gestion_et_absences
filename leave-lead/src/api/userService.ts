@@ -1,6 +1,6 @@
 import { User } from "@/data/users";
 
-const API_URL = "http://localhost:8080/gestion-conge/api/users";
+const API_URL = "http://localhost:8080/conge-absence/api/users";
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
@@ -13,15 +13,16 @@ const getAuthHeaders = () => {
 // ✅ Payload de création mis à jour : le matricule est retiré (géré par le serveur)
 // et le departementId devient obligatoire pour piloter l'autogénération.
 export interface CreateUserPayload {
-  nom: string;
-  prenom: string;
-  email: string;
-  password: string;
-  role: string;
-  departementId: number; 
-  telephone?: string;
-  poste?: string;
-  dateEmbauche?: string;
+  nom: string,
+  prenom: string,
+  email: string,
+  password: string,
+  role: string,
+  departementId: number,
+  telephone?: string,
+  poste?: string,
+  dateEmbauche?: string,
+  
 }
 
 export const userService = {
@@ -54,21 +55,24 @@ export const userService = {
   },
 
   /** ✅ Création d'un collaborateur avec mot de passe et affectation de sa structure */
-  create: async (
-    payload: CreateUserPayload,
-    solde: number = 0.0
-  ): Promise<User> => {
-    const response = await fetch(`${API_URL}/creer?solde=${solde}`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || "Erreur lors de la création du compte");
-    }
-    return response.json();
-  },
+  create: async (payload: CreateUserPayload, solde: number = 0.0): Promise<User> => {
+  const body = {
+    ...payload,
+    role: payload.role.trim(), 
+    departementId: Number(payload.departementId),
+  };
+
+  const response = await fetch(`${API_URL}/creer?solde=${solde}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || "Erreur lors de la création du compte");
+  }
+  return response.json();
+},
 
   /** Modification d'un compte — Le mot de passe est exclu du traitement pour sécurité */
   update: async (id: number, user: Partial<User>): Promise<User> => {
@@ -128,8 +132,8 @@ export const userService = {
   },
 
   /** Récupère la liste filtrée selon la logique métier de ListeParMonEquipe */
-getMonEquipe: async (deptId: number): Promise<User[]> => {
-  const response = await fetch(`${API_URL}/chef-equipe/${deptId}`, {
+getMonEquipe: async (ChefId: number): Promise<User[]> => {
+  const response = await fetch(`${API_URL}/chef-equipe/${ChefId}`, {
     method: "GET",
     headers: getAuthHeaders(),
   });
@@ -159,6 +163,24 @@ getMonEquipe: async (deptId: number): Promise<User[]> => {
     if (!response.ok) throw new Error("Erreur de récupération des managers de cette structure");
     return response.json();
   },
+
+  getMonEquipeComplete: async (userId: number): Promise<User[]> => {
+  const response = await fetch(`${API_URL}/equipe-complete/${userId}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Erreur de récupération de l'équipe");
+  return response.json();
+},
+
+getByDepartement1: async (deptId: number): Promise<User[]> => {
+  const response = await fetch(`${API_URL}/departement/${deptId}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Erreur de récupération de l'équipe");
+  return response.json();
+},
 
   /** Suppression définitive d'un compte utilisateur */
   delete: async (id: number): Promise<string> => {
@@ -194,7 +216,7 @@ getMonEquipe: async (deptId: number): Promise<User[]> => {
 
   /** ✅ AJOUT : Récupère la liste complète des structures / départements */
   getDepartements: async (): Promise<any[]> => {
-    const DEPT_API_URL = "http://localhost:8080/gestion-conge/api/departement/departements";
+    const DEPT_API_URL = "http://localhost:8080/conge-absence/api/departement/departements";
     const response = await fetch(DEPT_API_URL, {
       method: "GET",
       headers: getAuthHeaders(),

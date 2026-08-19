@@ -1,6 +1,6 @@
 import { Absence } from "@/data/absences";
 
-const API_URL = "http://localhost:8080/gestion-conge/api/absences";
+const API_URL = "http://localhost:8080/conge-absence/api/absences";
 
 const getAuthHeaders = (isMultipart = false): Record<string, string> => {
   const token = localStorage.getItem('token');
@@ -49,11 +49,11 @@ export const absenceService = {
     return handleResponse<Absence[]>(response, "Erreur lors de la récupération des absences de l'équipe");
   },
 
-  getByDepartement: async (departementId: number): Promise<Absence[]> => {
-    const response = await fetch(`${API_URL}/departement/${departementId}`, {
+  getByChef: async (chefId: number): Promise<Absence[]> => {
+    const response = await fetch(`${API_URL}/chef/${chefId}`, {
       headers: getAuthHeaders(),
     });
-    return handleResponse<Absence[]>(response, "Erreur lors de la récupération des absences du département");
+    return handleResponse<Absence[]>(response, "Erreur lors de la récupération des absences");
   },
 
   justifier: async (id: number, motif: string, file: File): Promise<Absence> => {
@@ -69,15 +69,4 @@ export const absenceService = {
     return handleResponse<Absence>(response, "Erreur lors de la justification de l'absence");
   },
 
-  triggerDetection: async (): Promise<string> => {
-    const response = await fetch(`${API_URL}/detecter`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Erreur lors du déclenchement de la détection");
-    }
-    return response.text(); // ← text() et non json() car le back renvoie une String
-  },
 };

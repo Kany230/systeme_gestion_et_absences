@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8080/gestion-conge";
+const API_URL = "http://localhost:8080/conge-absence/api/users";
 
 export const authService = {
   /**
@@ -12,7 +12,7 @@ export const authService = {
     };
 
     // 2. Appel à la nouvelle route API
-    const response = await fetch(`${API_URL}/api/users/login`, {
+    const response = await fetch(`${API_URL}/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json", // On passe en JSON

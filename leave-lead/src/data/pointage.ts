@@ -19,8 +19,8 @@ export interface User {
 
 const today = new Date().toISOString().split("T")[0];
 
-export enum StatutPointage{
-  present = 0,
-  retard = 1,
-  absent = 2
+export enum StatutPointage {
+  present = "present",
+  retard  = "retard",
+  absent  = "absent",
 }

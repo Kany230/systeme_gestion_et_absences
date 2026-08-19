@@ -1,6 +1,6 @@
 import { TypeConge } from "@/data/type";
 
-const API_URL = "http://localhost:8080/gestion-conge/api/type-conge";
+const API_URL = "http://localhost:8080/conge-absence/api/type-conge";
 
 // Fonction utilitaire pour récupérer les headers avec le token à jour
 const getAuthHeaders = () => {

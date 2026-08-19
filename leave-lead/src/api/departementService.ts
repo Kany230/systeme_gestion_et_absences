@@ -2,7 +2,7 @@ import { Department} from "@/data/departments";
 import { userService } from "./userService";
 import { User } from "@/data/users";
 
-const API_URL = "http://localhost:8080/gestion-conge/api/departement";
+const API_URL = "http://localhost:8080/conge-absence/api/departement";
 
 // Fonction utilitaire pour récupérer les headers avec le token à jour
 const getAuthHeaders = () => {
@@ -101,7 +101,7 @@ export const departmentService = {
   },
   
   getManagersByDept: async (deptId: number): Promise<User[]> => {
-    const response = await fetch(`http://localhost:8080/gestion-conge/api/users/departement/${deptId}/managers`, {
+    const response = await fetch(`http://localhost:8080/conge-absence/api/users/departement/${deptId}/managers`, {
       method: "GET",
       headers: getAuthHeaders(),
     });

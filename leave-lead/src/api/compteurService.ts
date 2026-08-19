@@ -1,6 +1,6 @@
 import { CompteursConges } from "@/data/compteurs";
 
-const API_URL = "http://localhost:8080/gestion-conge/api/comptes-conges";
+const API_URL = "http://localhost:8080/conge-absence/api/comptes-conges";
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
@@ -32,10 +32,10 @@ export const counterService = {
    */
   updateBalanceByRH: async (
     userId: number,
-    newSolde: number,
+    solde: number,
     motif: string
   ): Promise<string> => {
-    const url = `${API_URL}/modifier/${userId}?newSolde=${newSolde}&motif=${encodeURIComponent(motif)}`;
+    const url = `${API_URL}/modifier/${userId}?newSolde=${solde}&motif=${encodeURIComponent(motif)}`;
 
     const response = await fetch(url, {
       method: "PUT",

@@ -10,6 +10,11 @@ export interface LeaveRequest {
   nombreJoursDeduit: number;
   statut: LeaveStatus;
   justificationUrl: string;
+  user?: User; 
+  typeConge?: TypeConge;
+  userNom?: string;    
+  userPrenom?: string;
+  userMatricule?: string;
 }
 
 export interface User {
@@ -25,6 +30,8 @@ export interface TypeConge {
   id: number;
   nomType: string;
   dureMax?: string;
+  demandeJustification: boolean;
+  estDeductible: boolean;
 }
 
 // Type spécifique pour la création d'une demande (ce qu'on envoie au backend)

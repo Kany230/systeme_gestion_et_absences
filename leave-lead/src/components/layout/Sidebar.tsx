@@ -3,26 +3,31 @@ import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, CalendarDays, CheckSquare, Clock, UserX,
   Users, FileSpreadsheet, Building2, PartyPopper, User as UserIcon, X, UsersRound,
+  BarChart,
+  LucideHistory,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Item { to: string; label: string; icon: any; roles: string[]; }
 // Modifie ton tableau 'items' dans Sidebar.tsx
 const items: Item[] = [
-  { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: ["employe", "manager", "chef_equipe", "DRH"] },
+  { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: ["employe", "manager", "chef_equipe", "DRH", "admin"] },
   { to: "/leaves", label: "Demandes de congé", icon: CalendarDays, roles: ["employe", "manager", "chef_equipe", "DRH"] },
-  { to: "/leaves/validate", label: "Validation des congés", icon: CheckSquare, roles: ["manager", "chef_equipe", "DRH"] },
-  { to: "/leave-types", label: "Types de congés", icon: FileSpreadsheet, roles: ["DRH"] },
-  { to: "/historique", label: "Historique", icon: FileSpreadsheet, roles: ["DRH"] },
-  { to: "/attendance", label: "Pointages & Présence", icon: Clock, roles: ["manager", "DRH"] },
-  { to: "/team", label: "Mon équipe", icon: UsersRound, roles: ["employe", "manager", "chef_equipe", "DRH"] },
-  { to: "/absences", label: "Absences", icon: UserX, roles: ["employe", "manager", "chef_equipe", "DRH"] },
-  { to: "/users", label: "Utilisateurs", icon: Users, roles: ["DRH"] },
-  {to: "/users/import", label: "Importation Excel", icon: FileSpreadsheet, roles: ["DRH"]},
+  { to: "/leaves/validate", label: "Validation des congés", icon: CheckSquare, roles: ["manager", "chef_equipe", "DRH", "admin"] },
+  { to: "/admin/conges-valides", label: "Congés validés", icon: ClipboardCheck, roles: ["admin"] },
+  { to: "/leave-types", label: "Types de congés", icon: FileSpreadsheet, roles: ["DRH", "manager", "chef_equipe", "employe", "admin"] },
+  { to: "/historique", label: "Historique", icon: LucideHistory, roles: ["employe","manager", "DRH","chef_equipe", "admin"]  },
+  { to: "/admin", label: "Pointages & Présence", icon: Clock, roles: ["DRH", "admin"] },
+  { to: "/attendance", label: "Pointages & Présence", icon: Clock, roles: ["employe","manager","chef_equipe"] },
+  { to: "/team", label: "Mon équipe", icon: UsersRound, roles: ["employe", "manager", "chef_equipe"] },
+  { to: "/absences", label: "Absences", icon: UserX, roles: ["employe", "manager", "chef_equipe", "DRH", "admin"] },
+  { to: "/users", label: "Utilisateurs", icon: Users, roles: ["DRH", "admin"] },
+  {to: "/users/import", label: "Importation Excel", icon: FileSpreadsheet, roles: ["DRH", "admin"]},
   {to: "/chef", label: "Gestion de l'équipe", icon: Users, roles: ["manager"]},
-  { to: "/departments", label: "Départements", icon: Building2, roles: ["manager", "chef_equipe", "DRH"] },
-  { to: "/holidays", label: "Jours fériés", icon: PartyPopper, roles: ["employe", "manager", "chef_equipe", "DRH"] },
-  { to: "/profile", label: "Profil", icon: UserIcon, roles: ["employe", "manager", "chef_equipe", "DRH"] },
+  { to: "/departments", label: "Départements", icon: Building2, roles: ["manager", "chef_equipe", "DRH", "admin"] },
+  { to: "/holidays", label: "Jours fériés", icon: PartyPopper, roles: ["employe", "manager", "chef_equipe", "DRH", "admin"] },
+  { to: "/profile", label: "Profil", icon: UserIcon, roles: ["employe", "manager", "chef_equipe", "DRH", "admin"] },
 ];
 
 export const Sidebar = ({ open, onClose }: { open: boolean; onClose: () => void }) => {

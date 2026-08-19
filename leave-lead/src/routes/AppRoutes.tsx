@@ -21,6 +21,8 @@ import NotFound from "@/pages/NotFound";
 import LeaveTypesPage from "@/pages/LeaveTypesPage";
 import HistoriquePage from "@/pages/HistoryPage";
 import ManagementEquipePage from "@/pages/ManagementEquipePage";
+import AttendanceAdminPage from "@/pages/AttendanceAdminPage";
+import AdminDemandesPage from "@/pages/Admindemandespage";
 
 // Petit composant Spinner pour le chargement
 const LoadingSpinner = () => (
@@ -60,24 +62,28 @@ const AppRoutes = () => (
     <Route path="/holidays" element={<Protected><HolidaysPage /></Protected>} />
     <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
     <Route path="/historique" element={<Protected><HistoriquePage /></Protected>} />
+    <Route path="/leave-types" element={<Protected><LeaveTypesPage /></Protected>} />
     {/* Routes Manager / RH / Chef d'équipe */}
     <Route 
       path="/leaves/validate" 
-      element={<Protected roles={[Role.manager, Role.chef_equipe, Role.DRH]}><LeaveValidationPage /></Protected>} 
+      element={<Protected roles={[Role.manager, Role.chef_equipe, Role.DRH, Role.admin]}><LeaveValidationPage /></Protected>} 
     />
     <Route 
       path="/departments" 
-      element={<Protected roles={[Role.manager, Role.chef_equipe, Role.DRH]}><DepartmentsPage /></Protected>} 
+      element={<Protected roles={[Role.manager, Role.chef_equipe, Role.DRH, Role.admin]}><DepartmentsPage /></Protected>} 
     />
-    <Route path="/team" element={<Protected roles={[Role.manager, Role.chef_equipe, Role.DRH]}><TeamPage /></Protected>} />
+    <Route path="/team" element={<Protected roles={[Role.manager, Role.chef_equipe, Role.DRH, Role.employe, Role.admin]}><TeamPage /></Protected>} />
     <Route path="/chef" element={<Protected roles={[Role.manager]}><ManagementEquipePage /></Protected>} />
     
 
     {/* Routes Strictement RH (Cas 2 : Gestion des utilisateurs) */}
-    <Route path="/users" element={<Protected roles={[Role.DRH]}><UsersPage /></Protected>} />
-    <Route path="/users/import" element={<Protected roles={[Role.DRH]}><ExcelImportPage /></Protected>} />
-    <Route path="/leave-types" element={<Protected roles={[Role.DRH]}><LeaveTypesPage /></Protected>} />
-    <Route path="/historique" element={<Protected roles={[Role.DRH]}><HistoriquePage /></Protected>} />
+    <Route path="/users" element={<Protected roles={[Role.DRH, Role.admin]}><UsersPage /></Protected>} />
+    <Route path="/users/import" element={<Protected roles={[Role.DRH, Role.admin]}><ExcelImportPage /></Protected>} />
+    <Route path="/leave-types" element={<Protected roles={[Role.DRH, Role.admin]}><LeaveTypesPage /></Protected>} />
+    <Route path="/historique" element={<Protected roles={[Role.DRH, Role.admin]}><HistoriquePage /></Protected>} />
+    <Route path="/admin" element={<Protected roles={[Role.DRH, Role.admin]}><AttendanceAdminPage /></Protected>} />
+    <Route path="/admin/conges-valides" element={<Protected roles={[Role.admin]}><AdminDemandesPage /></Protected>} />
+    
 
     {/* 404 */}
     <Route path="*" element={<NotFound />} />

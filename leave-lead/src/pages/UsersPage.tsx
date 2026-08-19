@@ -49,6 +49,10 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isBalanceModalOpen, setIsBalanceModalOpen] = useState(false);
+  const [balanceAmount, setBalanceAmount] = useState("");
+  const [balanceReason, setBalanceReason] = useState("");
+  const [currentSolde, setCurrentSolde] = useState<number>(0);
 
   // ✅ CORRIGÉ : Ajout du departementId, retrait de matricule du state d'édition
   const [formData, setFormData] = useState({
@@ -170,16 +174,35 @@ export default function UsersPage() {
     }
   };
 
-  const handleAdjustBalance = async (userId: number) => {
-    const amount = prompt("Nombre de jours à définir (ex: 25) :");
-    const reason = prompt("Motif de l'ajustement :");
-    if (!amount || !reason) return;
+const handleOpenBalanceModal = async (user: User) => {
+  setSelectedUser(user);
+  setBalanceAmount("");
+  setBalanceReason("");
+  
+  // Récupération dynamique du solde via votre service
+  try {
+    const counter = await counterService.getSoldeById(user.id!);
+    setCurrentSolde(counter.soldeAn); // On récupère la valeur précise
+  } catch (err) {
+    toast.error("Impossible de récupérer le solde");
+    setCurrentSolde(0);
+  }
+  
+  setIsBalanceModalOpen(true);
+};
+
+const handleConfirmBalance = async () => {
+    if (!selectedUser || !balanceAmount || !balanceReason) {
+      toast.error("Veuillez remplir tous les champs");
+      return;
+    }
     try {
-      await counterService.updateBalanceByRH(userId, parseFloat(amount), reason);
+      await counterService.updateBalanceByRH(selectedUser.id!, parseFloat(balanceAmount), balanceReason);
       toast.success("Solde mis à jour");
+      setIsBalanceModalOpen(false);
       loadData();
     } catch (error) {
-      toast.error("Erreur lors de la mise à jour du solde");
+      toast.error("Erreur lors de la mise à jour");
     }
   };
 
@@ -311,15 +334,15 @@ export default function UsersPage() {
 
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-amber-600 hover:bg-amber-50"
-                        onClick={() => handleAdjustBalance(user.id!)}
-                        title="Ajuster solde"
-                      >
-                        <TrendingUp className="h-4 w-4" />
-                      </Button>
+                         <Button
+  variant="ghost"
+  size="icon"
+  className="h-8 w-8 text-amber-600 hover:bg-amber-50"
+  onClick={() => handleOpenBalanceModal(user)} // <-- CHANGEMENT ICI
+  title="Ajuster solde"
+>
+  <TrendingUp className="h-4 w-4" />
+</Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -531,6 +554,7 @@ export default function UsersPage() {
             )}
           </div>
 
+    
           <DialogFooter>
             <Button
               variant="outline"
@@ -549,6 +573,43 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* MODALE AJUSTEMENT SOLDE */}
+<Dialog open={isBalanceModalOpen} onOpenChange={setIsBalanceModalOpen}>
+  <DialogContent className="max-w-sm">
+    <DialogHeader>
+      <DialogTitle>Ajuster le solde de {selectedUser?.prenom} {selectedUser?.nom}</DialogTitle>
+    </DialogHeader>
+    
+    <div className="space-y-4 py-4">
+      {/* Affichage du solde actuel */}
+      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 mb-4">
+  <div className="flex justify-between items-center">
+    <span className="text-sm text-slate-500">Solde actuel de {selectedUser?.prenom} :</span>
+    <span className="text-lg font-bold text-indigo-700">
+      {currentSolde} <span className="text-sm font-normal text-slate-500">jours</span>
+    </span>
+  </div>
+</div>
+
+      <Input 
+        placeholder="Montant à ajouter (ex: 5 ou -2)" 
+        type="number" 
+        value={balanceAmount} 
+        onChange={(e) => setBalanceAmount(e.target.value)}
+      />
+      <Input 
+        placeholder="Motif de l'ajustement" 
+        value={balanceReason} 
+        onChange={(e) => setBalanceReason(e.target.value)}
+      />
+    </div>
+
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setIsBalanceModalOpen(false)}>Annuler</Button>
+      <Button onClick={handleConfirmBalance} className="bg-amber-600">Valider</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </div>
   );
 }

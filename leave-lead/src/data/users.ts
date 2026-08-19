@@ -43,5 +43,6 @@ export enum Role {
   employe = "employe",
   chef_equipe = "chef_equipe",
   manager = "manager", 
-  DRH = "DRH"
+  DRH = "DRH",
+  admin = "admin"
 }

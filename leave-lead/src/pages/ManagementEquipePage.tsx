@@ -2,63 +2,34 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Search,
-  Users,
-  UserCheck,
-  Loader2,
-  Mail,
-  Briefcase,
-  ChevronRight,
-  UserCog,
-  Hash,
-} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Users, UserCheck, Loader2, Mail, Briefcase, UserCog, Hash, UserPlus, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { userService } from "@/api/userService";
 import { User } from "@/data/users";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ManagementEquipePage() {
-  // ─── State ───────────────────────────────────────────
   const [manager, setManager] = useState<User | null>(null);
   const [employes, setEmployes] = useState<User[]>([]);
   const [chefs, setChefs] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Modale d'assignation
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmploye, setSelectedEmploye] = useState<User | null>(null);
   const [selectedChefId, setSelectedChefId] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
-  // ─── Chargement ──────────────────────────────────────
   const loadData = async () => {
     setLoading(true);
     try {
-      // Récupère le manager connecté depuis le localStorage
       const raw = localStorage.getItem("user");
       if (!raw) throw new Error("Session expirée");
       const currentUser: User = JSON.parse(raw);
       setManager(currentUser);
-
-      // Charge tous les membres du département + filtre les chefs d'équipe
       const membres = await userService.getByManager(currentUser.id!);
       setEmployes(membres.filter((u) => u.role === "employe"));
       setChefs(membres.filter((u) => u.role === "chef_equipe"));
@@ -69,232 +40,118 @@ export default function ManagementEquipePage() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // ─── Assignation ─────────────────────────────────────
-  const handleOpenAssign = (employe: User) => {
-    setSelectedEmploye(employe);
-    // Pré-sélectionne le chef actuel si déjà assigné
-    setSelectedChefId(
-      employe.manager?.id ? String(employe.manager.id) : ""
-    );
-    setIsModalOpen(true);
-  };
+  useEffect(() => { loadData(); }, []);
 
   const handleAssigner = async () => {
-    if (!selectedChefId) {
-      toast.error("Veuillez sélectionner un chef d'équipe");
-      return;
-    }
-    if (!selectedEmploye || !manager) return;
-
+    if (!selectedChefId || !selectedEmploye || !manager) return;
     setSaving(true);
     try {
-      await userService.assignManager(
-        selectedEmploye.id!,
-        Number(selectedChefId),
-        manager.id!
-      );
-      toast.success(
-        `${selectedEmploye.prenom} assigné(e) au chef d'équipe`
-      );
+      await userService.assignManager(selectedEmploye.id!, Number(selectedChefId), manager.id!);
+      toast.success("Assignation mise à jour avec succès");
       setIsModalOpen(false);
       loadData();
-    } catch (error: any) {
-      toast.error(error.message || "Erreur lors de l'assignation");
+    } catch {
+      toast.error("Erreur lors de l'assignation");
     } finally {
       setSaving(false);
     }
   };
 
-  // ─── Filtres ─────────────────────────────────────────
-  const filteredEmployes = employes.filter((u) =>
-    `${u.prenom} ${u.nom} ${u.email} ${u.matricule}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
+  if (loading) return (
+    <div className="p-8 space-y-6">
+      <Skeleton className="h-10 w-64" />
+      <div className="grid grid-cols-3 gap-4">
+        {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+      </div>
+    </div>
   );
 
-  // ─── Helpers UI ──────────────────────────────────────
-  const getChefNom = (employe: User) => {
-    if (!employe.manager) return null;
-    const chef = chefs.find((c) => c.id === employe.manager?.id);
-    return chef ? `${chef.prenom} ${chef.nom}` : null;
-  };
-
-  // ─── Loading ─────────────────────────────────────────
-  if (loading)
-    return (
-      <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-        <p className="text-slate-500 animate-pulse">
-          Chargement des équipes...
-        </p>
-      </div>
-    );
-
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Gestion des équipes"
-        description={`Assignez vos employés aux chefs d'équipe de votre département`}
-      />
+    <div className="space-y-8 p-8 max-w-7xl mx-auto">
+      <PageHeader title="Gestion des équipes" description="Organisez vos collaborateurs et assignez-les aux chefs d'équipe." />
 
-      {/* ── Statistiques rapides ── */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4 border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-            <Users className="h-5 w-5 text-indigo-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-slate-900">{employes.length}</p>
-            <p className="text-xs text-slate-500">Employés</p>
-          </div>
-        </Card>
-
-        <Card className="p-4 border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center">
-            <UserCog className="h-5 w-5 text-purple-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-slate-900">{chefs.length}</p>
-            <p className="text-xs text-slate-500">Chefs d'équipe</p>
-          </div>
-        </Card>
-
-        <Card className="p-4 border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
-            <UserCheck className="h-5 w-5 text-green-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-slate-900">
-              {employes.filter((e) => e.manager).length}
-            </p>
-            <p className="text-xs text-slate-500">Assignés</p>
-          </div>
-        </Card>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          { label: "Total Employés", val: employes.length, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Chefs d'équipe", val: chefs.length, icon: UserCog, color: "text-purple-600", bg: "bg-purple-50" },
+          { label: "Assignés", val: employes.filter((e: any) => e.chefInfo).length, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
+        ].map((stat, i) => (
+          <Card key={i} className="p-6 flex items-center gap-4 rounded-2xl border-slate-100 shadow-sm">
+            <div className={`h-12 w-12 rounded-2xl ${stat.bg} flex items-center justify-center ${stat.color}`}>
+              <stat.icon size={24} />
+            </div>
+            <div>
+              <p className="text-3xl font-bold">{stat.val}</p>
+              <p className="text-sm text-slate-500">{stat.label}</p>
+            </div>
+          </Card>
+        ))}
       </div>
 
-      {/* ── Tableau des employés ── */}
-      <Card className="p-2 border-slate-200 shadow-sm">
-        <div className="p-4 border-b border-slate-100 flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Rechercher un employé..."
-              className="pl-10 bg-slate-50/50 border-slate-200"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+      {/* Main Table Card */}
+      <Card className="rounded-2xl border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b flex justify-between items-center">
+          <div className="relative w-80">
+            <Search className="absolute left-3 top-3 text-slate-400" size={18} />
+            <Input 
+              className="pl-10 bg-slate-50 border-none rounded-xl" 
+              placeholder="Rechercher par nom..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
-          <p className="text-xs text-slate-400 ml-auto">
-            {filteredEmployes.length} employé(s)
-          </p>
         </div>
 
         <Table>
-          <TableHeader className="bg-slate-50/50">
-            <TableRow>
+          <TableHeader>
+            <TableRow className="bg-slate-50/50">
               <TableHead>Employé</TableHead>
-              <TableHead>Poste</TableHead>
-              <TableHead>Chef d'équipe actuel</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Chef Assigné</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredEmployes.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-slate-400 py-12">
-                  Aucun employé trouvé.
+            {employes.filter(e => `${e.prenom} ${e.nom}`.toLowerCase().includes(searchTerm.toLowerCase())).map((e: any) => (
+              <TableRow key={e.id} className="hover:bg-slate-50/50 transition-colors">
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500">
+                      {e.prenom[0]}{e.nom[0]}
+                    </div>
+                    <div>
+                      <p className="font-semibold">{e.prenom} {e.nom}</p>
+                      <p className="text-xs text-slate-400">{e.matricule}</p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm flex flex-col gap-1">
+                    <p className="flex items-center gap-2"><Mail size={14} className="text-slate-400"/>{e.email}</p>
+                    <p className="flex items-center gap-2"><Briefcase size={14} className="text-slate-400"/>{e.poste}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {e.chefInfo ? (
+                    <Badge variant="secondary" className="rounded-full bg-purple-50 text-purple-700 hover:bg-purple-100">
+                      {e.chefInfo.prenom} {e.chefInfo.nom}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-amber-600 border-amber-200">Non assigné</Badge>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" className="text-blue-600 hover:bg-blue-50" onClick={() => { setSelectedEmploye(e); setIsModalOpen(true); }}>
+                    {e.chefInfo ? "Réassigner" : "Assigner"} <UserPlus className="ml-2" size={16} />
+                  </Button>
                 </TableCell>
               </TableRow>
-            ) : (
-              filteredEmployes.map((employe: any) => {
-                const chefNom = getChefNom(employe);
-                return (
-                  <TableRow
-                    key={employe.id}
-                    className="hover:bg-slate-50/50 transition-colors"
-                  >
-                    {/* Employé */}
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
-                          {employe.prenom?.[0]}{employe.nom?.[0]}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-900">
-                            {employe.prenom} {employe.nom}
-                          </div>
-                          <div className="text-[11px] text-slate-400 flex items-center gap-1 uppercase tracking-wider">
-                            <Hash className="h-3 w-3" />
-                            {employe.matricule || "—"}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* Poste */}
-                    <TableCell>
-                      <div className="text-sm text-slate-600 flex items-center gap-1">
-                        <Briefcase className="h-3 w-3 text-slate-400" />
-                        {employe.poste || "Non défini"}
-                      </div>
-                      <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                        <Mail className="h-3 w-3" />
-                        {employe.email}
-                      </div>
-                    </TableCell>
-
-                    {/* Chef actuel */}
-                    <TableCell>
-                      {chefNom ? (
-                        <Badge className="bg-purple-100 text-purple-700 border-purple-200 font-medium">
-                          {chefNom}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">
-                          Non assigné
-                        </span>
-                      )}
-                    </TableCell>
-
-                    {/* Action */}
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 gap-1"
-                        onClick={() => handleOpenAssign(employe)}
-                        disabled={chefs.length === 0}
-                        title={
-                          chefs.length === 0
-                            ? "Aucun chef d'équipe disponible dans ce département"
-                            : "Assigner un chef d'équipe"
-                        }
-                      >
-                        <UserCheck className="h-3.5 w-3.5" />
-                        {chefNom ? "Réassigner" : "Assigner"}
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
+            ))}
           </TableBody>
         </Table>
-
-        {/* Message si pas de chefs disponibles */}
-        {chefs.length === 0 && (
-          <div className="p-4 text-center text-sm text-amber-600 bg-amber-50 border-t border-amber-100">
-            ⚠️ Aucun chef d'équipe n'est disponible dans votre département. Contactez le DRH.
-          </div>
-        )}
       </Card>
-
-      {/* ── Modale d'assignation ── */}
+      
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
