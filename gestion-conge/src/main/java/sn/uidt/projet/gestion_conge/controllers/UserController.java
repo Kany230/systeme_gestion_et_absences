@@ -1,9 +1,11 @@
 package sn.uidt.projet.gestion_conge.controllers;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import sn.uidt.projet.gestion_conge.config.JwtUtils;
+import sn.uidt.projet.gestion_conge.dto.UserCreateRequest;
 import sn.uidt.projet.gestion_conge.dto.UserDTO;
 import sn.uidt.projet.gestion_conge.entities.Role;
 import sn.uidt.projet.gestion_conge.services.ExcelService;
@@ -43,6 +46,7 @@ public class UserController {
 
     @Autowired
     private JwtUtils jwtUtils;
+
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> loginRequest) {
@@ -71,39 +75,41 @@ public class UserController {
 
     @PostMapping("/creer")
     public ResponseEntity<UserDTO> creerUser(
-            @RequestBody Map<String, Object> payload,
+            @RequestBody UserCreateRequest request,
             @RequestParam(defaultValue = "0.0") Double solde) {
 
-        String password = (String) payload.get("password");
-        if (password == null || password.isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Long departementId = null;
-        if (payload.get("departementId") != null) {
-            departementId = Long.valueOf(payload.get("departementId").toString());
-        } else {
-            return ResponseEntity.badRequest().build();
-        }
-
         UserDTO userDto = new UserDTO();
-        userDto.setNom((String) payload.get("nom"));
-        userDto.setPrenom((String) payload.get("prenom"));
-        userDto.setEmail((String) payload.get("email"));
-        userDto.setTelephone((String) payload.get("telephone"));
-        userDto.setPoste((String) payload.get("poste"));
+        userDto.setNom(request.getNom());
+        userDto.setPrenom(request.getPrenom());
+        userDto.setEmail(request.getEmail());
+        userDto.setTelephone(request.getTelephone());
+        userDto.setPoste(request.getPoste());
 
-        if (payload.get("role") != null) {
-            String roleStr = ((String) payload.get("role")).toUpperCase().trim();
-            userDto.setRole(Role.valueOf(roleStr));
+        // Role protégé
+        try {
+            userDto.setRole(Role.valueOf(request.getRole().trim()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         }
 
-        if (payload.get("dateEmbauche") != null) {
-            userDto.setDateEmbauche(java.time.LocalDate.parse((String) payload.get("dateEmbauche")));
+        // Date protégée
+        if (request.getDateEmbauche() != null && !request.getDateEmbauche().isBlank()) {
+            try {
+                userDto.setDateEmbauche(LocalDate.parse(request.getDateEmbauche()));
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().build();
+            }
         }
 
-        UserDTO created = userService.creerUser(userDto, solde, password, departementId);
+        UserDTO created = userService.creerUser(
+                userDto, solde, request.getPassword(), request.getDepartementId()
+        );
         return ResponseEntity.ok(created);
+    }
+
+    @GetMapping("/equipe-complete/{userId}")
+    public ResponseEntity<List<UserDTO>> getEquipeComplete(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.getMonEquipeComplete(userId));
     }
 
     @PostMapping("/import-excel")
@@ -131,14 +137,19 @@ public class UserController {
         return ResponseEntity.ok(userService.ListeParMonEquipe(managerId));
     }
 
-    @GetMapping("/chef-equipe/{deptId}")
-    public ResponseEntity<List<UserDTO>> getByChefEquipe(@PathVariable Long deptId) {
-        return ResponseEntity.ok(userService.getByEquipe(deptId));
+    @GetMapping("/chef-equipe/{chefId}")
+    public ResponseEntity<List<UserDTO>> getByChefEquipe(@PathVariable Long chefId) {
+        return ResponseEntity.ok(userService.getMonEquipeComplete(chefId));
     }
 
     @GetMapping("/departement/{deptId}/managers")
     public ResponseEntity<List<UserDTO>> getManagersByDept(@PathVariable Long deptId) {
         return ResponseEntity.ok(userService.getManagersParDepartement(deptId));
+    }
+
+    @GetMapping("/departement/{deptId}")
+    public ResponseEntity<List<UserDTO>> getByDepartement(@PathVariable Long deptId) {
+        return ResponseEntity.ok(userService.getUsersByDepartement(deptId));
     }
 
     @GetMapping("/{id}")
@@ -181,4 +192,5 @@ public class UserController {
         userService.supprimerUser(id);
         return ResponseEntity.ok("Utilisateur supprimé");
     }
+
 }

@@ -22,6 +22,10 @@ public class DemandeCongeMapper {
         dto.setNombreJoursDeduit(entity.getNombreJoursDeduit());
         dto.setStatut(entity.getStatut());
         dto.setJustificationUrl(entity.getJustificationUrl());
+        dto.setUserId(entity.getUser().getId());
+        dto.setUserNom(entity.getUser().getNom());
+        dto.setUserPrenom(entity.getUser().getPrenom());
+        dto.setUserMatricule(entity.getUser().getMatricule());
 
         if (entity.getUser() != null) {
             dto.setUserId(entity.getUser().getId());

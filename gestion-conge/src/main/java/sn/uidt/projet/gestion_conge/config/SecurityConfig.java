@@ -25,10 +25,11 @@ import jakarta.servlet.http.HttpServletResponse;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final UserDetailsService userDetailsService;
-    private final JwtRequestFilter jwtRequestFilter;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final UserDetailsService userDetailsService; //charge les utilisateurs depuis la BDD
+    private final JwtRequestFilter jwtRequestFilter;//filtre qui intercepte les tokens JWT
+    private final BCryptPasswordEncoder passwordEncoder;//pour comparer les mots de passe
 
+    //Contructeur
     public SecurityConfig(UserDetailsService userDetailsService,
             JwtRequestFilter jwtRequestFilter,
             BCryptPasswordEncoder passwordEncoder) {
@@ -38,16 +39,17 @@ public class SecurityConfig {
     }
 
     @Bean
+    //Il permet de déclencher l'authentification lors du login :
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        // On passe directement le userDetailsService au constructeur
+        //charge l'utilisateur depuis BDD
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
 
-        // On garde le setter pour l'encodeur de mot de passe
+        //compare les mots de passe BCrypt
         authProvider.setPasswordEncoder(passwordEncoder);
 
         return authProvider;
@@ -59,7 +61,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                // ✅ OPTIONS en tout premier
+                // OPTIONS en tout premier
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/users/login").permitAll()
@@ -67,7 +69,7 @@ public class SecurityConfig {
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/demandes-conges/demande/drh")
-                .hasAnyAuthority("ROLE_DRH", "DRH")
+                .hasAnyRole("DRH", "admin")
                 .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -88,10 +90,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Autorise tes origines de développement
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000/"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
         // Autorise toutes les méthodes
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        // IMPORTANT : Autorise tous les headers pour éviter les blocages sur des headers custom
+        // Autorise tous les headers pour éviter les blocages sur des headers custom
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
         configuration.setAllowCredentials(true);

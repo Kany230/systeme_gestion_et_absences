@@ -20,7 +20,7 @@ public class Absence {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    private Long id;
 
     private LocalDate dateAbsence;
 

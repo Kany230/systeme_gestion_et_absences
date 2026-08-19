@@ -1,20 +1,25 @@
 package sn.uidt.projet.gestion_conge.controllers;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.multipart.MultipartFile;
+import sn.uidt.projet.gestion_conge.dto.AllCongeValiderDTO;
 import sn.uidt.projet.gestion_conge.dto.DemandeCongeDTO;
 import sn.uidt.projet.gestion_conge.dto.DemandeCongeMapper;
+import sn.uidt.projet.gestion_conge.dto.EmployeCongesDTO;
 import sn.uidt.projet.gestion_conge.entities.DemandeConge;
+import sn.uidt.projet.gestion_conge.repositories.DemandeCongeRepository;
 import sn.uidt.projet.gestion_conge.services.DemandeCongeService;
 
 @RestController
@@ -23,8 +28,13 @@ public class DemandeCongeController {
 
     @Autowired
     private DemandeCongeService demandeCongeService;
+
+    @Autowired
+    private DemandeCongeRepository demandeCongeRepository;
+
     @Autowired
     private DemandeCongeMapper demandeCongeMapper;
+
 
     //Creer une demande
     @PostMapping("/create")
@@ -90,13 +100,76 @@ public class DemandeCongeController {
         return demandeCongeMapper.toDTOList(demandeCongeService.vuByChefDepartement(departementId));
     }
 
+    @GetMapping("/chef-equipe/{chefId}/absents")
+    public ResponseEntity<List<DemandeConge>> absentsEquipe(
+            @PathVariable Long chefId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(demandeCongeService.getAbsentsByEquipe(chefId, date));
+    }
+
+
+    @GetMapping("/chef-equipe/{chefId}/retards")
+    public ResponseEntity<List<DemandeConge>> retardsEquipe(@PathVariable Long chefId) {
+        return ResponseEntity.ok(demandeCongeService.getRetardsByChefEquipe(chefId));
+    }
+
+    @GetMapping("/manager/{managerId}/absents")
+    public ResponseEntity<List<DemandeConge>> absentsDepartement(
+            @PathVariable Long managerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(demandeCongeService.getAbsentsByDepartement(managerId, date));
+    }
+
+    @GetMapping("/manager/{managerId}/retards")
+    public ResponseEntity<List<DemandeConge>> retardsDepartement(@PathVariable Long managerId) {
+        return ResponseEntity.ok(demandeCongeService.getRetardsByManager(managerId));
+    }
+
     @GetMapping("/demande/drh")
     public List<DemandeCongeDTO> getDemandeDRH() {
+
         return demandeCongeMapper.toDTOList(demandeCongeService.vuByDRH());
+    }
+
+    @GetMapping("/drh/absents")
+    public ResponseEntity<List<DemandeConge>> tousLesAbsents(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(demandeCongeService.getTousLesAbsents(date));
     }
 
     @GetMapping("/retours")
     public List<DemandeCongeDTO> getRetour() {
         return demandeCongeMapper.toDTOList(demandeCongeService.lesRetardDeRetours());
+    }
+
+    @PostMapping("/upload-justificatif")
+    public ResponseEntity<String> uploadJustificatif(@RequestParam("file") MultipartFile file) {
+        try {
+            Path uploadPath = Paths.get("uploads/justificatifs/");
+            if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
+
+            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            Files.copy(file.getInputStream(), uploadPath.resolve(fileName));
+
+            return ResponseEntity.ok("/uploads/justificatifs/" + fileName);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Erreur upload : " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<DemandeCongeDTO> getDemandeCongeById(@PathVariable Long id){
+        DemandeConge demandeConge = demandeCongeRepository.findById(id).orElseThrow(()->new RuntimeException("Demande introuvable"));
+        return ResponseEntity.ok(demandeCongeMapper.toDTO(demandeConge));
+    }
+
+    @GetMapping("/admin/toutes")
+    public ResponseEntity<List<AllCongeValiderDTO>> toutesLesDemandesAdmin() {
+        return ResponseEntity.ok(demandeCongeService.allCongeValiders());
+    }
+
+    @GetMapping("/conges/valides/par-employe")
+    public ResponseEntity<List<EmployeCongesDTO>> getCongesParEmploye() {
+        return ResponseEntity.ok(demandeCongeService.allCongeValiderGroupeParEmploye());
     }
 }

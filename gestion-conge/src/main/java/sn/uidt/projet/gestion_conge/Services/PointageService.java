@@ -1,5 +1,6 @@
 package sn.uidt.projet.gestion_conge.services;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -17,9 +18,7 @@ import sn.uidt.projet.gestion_conge.entities.Pointage;
 import sn.uidt.projet.gestion_conge.entities.StatutAbsence;
 import sn.uidt.projet.gestion_conge.entities.StatutPointage;
 import sn.uidt.projet.gestion_conge.entities.User;
-import sn.uidt.projet.gestion_conge.repositories.AbsenceRepository;
-import sn.uidt.projet.gestion_conge.repositories.PointageRepository;
-import sn.uidt.projet.gestion_conge.repositories.UserRepository;
+import sn.uidt.projet.gestion_conge.repositories.*;
 
 @Service
 public class PointageService {
@@ -33,12 +32,48 @@ public class PointageService {
     @Autowired
     private UserRepository userRepository;
 
-    private static final LocalTime heureLimite = LocalTime.of(8, 30);
+    @Autowired
+    private JourFerieRepository jourFerieRepository;
+
+    @Autowired
+    private DemandeCongeRepository demandeCongeRepository;
+
+    private static final LocalTime heureLimite = LocalTime.of(12, 30);
+    private static final LocalTime heureLimitePointage = LocalTime.of(14, 0);
+    private static final LocalTime heureOuverture = LocalTime.of(7, 0);
+
+    private void disponibilitePointage(){
+        LocalDate now =  LocalDate.now();
+        LocalTime nowHour = LocalTime.now();
+        DayOfWeek today = now.getDayOfWeek();
+
+        if (today == DayOfWeek.SUNDAY){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Aujourd'hui c'est Dimanche, donc il n'y a pas de pointage");
+        }
+
+        if (jourFerieRepository.existsByDate(now)){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Jour ferie, donc il n'y a pas de pointage");
+        }
+
+        if (nowHour.isBefore(heureOuverture)){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le pointage n'est pas encore disponible. Revenez à partir de 06h.");
+        }
+
+        if (nowHour.isAfter(heureLimitePointage)){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le pointage est clôturé après 12h. Revenez demain.");
+        }
+    }
 
     // Pointage arrivée
     public Pointage pointageArrive(Long userId) {
+        disponibilitePointage();
         LocalDate date = LocalDate.now();
         LocalTime heure = LocalTime.now();
+
+        boolean estEnConge = demandeCongeRepository.isUserEnCongeValide(userId, date);
+        if (estEnConge){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vous êtes en congé aujourd'hui, le pointage n'est pas autorisé");
+        }
 
         Optional<Pointage> existant = pointageRepository.findByUserIdAndDate(userId, date);
 
@@ -47,6 +82,10 @@ public class PointageService {
 
             // Pointage absent généré automatiquement → on le met à jour
             if (p.getStatut() == StatutPointage.absent && p.getHeureArrive() == null) {
+
+                if (heure.isAfter(heureLimitePointage)){
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le pointage est cloture apres 12h. Revenez demain");
+                }
                 p.setHeureArrive(heure);
                 p.setEstEnConge(false);
                 p.setStatut(heure.isAfter(heureLimite)
@@ -81,6 +120,7 @@ public class PointageService {
 
 // Pointage départ
     public Pointage pointageDepart(Long userId) {
+
         LocalDate today = LocalDate.now();
 
         Pointage pointage = pointageRepository.findByUserIdAndDate(userId, today)
@@ -107,11 +147,25 @@ public class PointageService {
         return pointageRepository.save(pointage);
     }
 
-    //detecter les absences à partir de 10h
-    @Scheduled(cron = "0 0 10 * * MON-FRI")
+
     @Transactional
     public void detecterAbsences() {
         LocalDate today = LocalDate.now();
+        LocalTime  heure = LocalTime.now();
+
+        if (today.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Détection annulée : c'est dimanche.");
+
+        }
+        if (jourFerieRepository.existsByDate(today)) {
+
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Détection annulée : c'est Ferie.");
+        }
+
+        if (heure.isBefore(heureLimitePointage)){
+
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "C'est trop tot pour detecter les absents.");
+        }
         List<User> users = userRepository.findAll();
 
         for (User user : users) {
@@ -149,12 +203,14 @@ public class PointageService {
     }
 
     //LES LISTES
-    public List<Pointage> ListParEquipe(Long managerId) {
-        return pointageRepository.findByManagerId(managerId);
+    public List<Pointage> ListParEquipe(Long chefId) {
+
+        return pointageRepository.findByManagerId(chefId);
     }
 
-    public List<Pointage> ListParDepartement(Long departementId) {
-        return pointageRepository.findByDepartementId(departementId);
+    public List<Pointage> ListParDepartement(Long managerId) {
+
+        return pointageRepository.findByManagerDepartementId(managerId);
     }
 
     public List<Pointage> getAll() {

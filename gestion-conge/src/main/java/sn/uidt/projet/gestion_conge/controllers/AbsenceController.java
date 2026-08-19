@@ -4,16 +4,12 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import sn.uidt.projet.gestion_conge.dto.JustificationRequestDTO;
 import sn.uidt.projet.gestion_conge.entities.Absence;
+import sn.uidt.projet.gestion_conge.entities.User;
+import sn.uidt.projet.gestion_conge.repositories.UserRepository;
 import sn.uidt.projet.gestion_conge.services.AbsenceService;
 
 @RestController
@@ -23,12 +19,9 @@ public class AbsenceController {
     @Autowired
     private AbsenceService absenceService;
 
-    //Delencher manuellement
-    @PostMapping("/detecter")
-    public ResponseEntity<String> detecterAbsence() {
-        absenceService.detecterAbsence();
-        return ResponseEntity.ok("Une absence a été detectée");
-    }
+    @Autowired
+    private UserRepository userRepository;
+
 
     //La liste des absences pour un user
     @GetMapping("/user/{userId}")
@@ -43,9 +36,9 @@ public class AbsenceController {
     }
 
     //La liste des absences dans une equipe
-    @GetMapping("/departement/{departementId}")
-    public List<Absence> listeAbsenceDepartement(@PathVariable Long departementId) {
-        return absenceService.listParDepartement(departementId);
+    @GetMapping("/chef/{chefId}")
+    public List<Absence> listeAbsenceDepartement(@PathVariable Long chefId) {
+        return absenceService.listParDepartement(chefId);
     }
 
     //La liste des absences dans une equipe

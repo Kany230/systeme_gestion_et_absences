@@ -54,7 +54,9 @@ public class UserService implements UserDetailsService {
                 .build();
     }
 
+    @Transactional
     public UserDTO creerUser(UserDTO userDto, Double soldeInitial, String passwordBrut, Long departementId) {
+
 
         if (userRepository.existsByEmail(userDto.getEmail())) {
             throw new RuntimeException("Un collaborateur possède déjà cette adresse e-mail.");
@@ -81,7 +83,7 @@ public class UserService implements UserDetailsService {
         }
 
         String anneeCourante = String.valueOf(Year.now().getValue());
-        String identifiantUnique = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        String identifiantUnique = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
 
         String matriculeAutomatique = prefixeDepartement + "-" + anneeCourante + "-" + identifiantUnique;
         user.setMatricule(matriculeAutomatique);
@@ -154,6 +156,7 @@ public class UserService implements UserDetailsService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public List<UserDTO> ListeParMonEquipe(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'ID : " + userId));
 
@@ -164,24 +167,47 @@ public class UserService implements UserDetailsService {
 
     }
 
-    public List<UserDTO> getByEquipe(Long chefId) {
-        return userRepository.findByChefEquipeId(chefId).stream()
-                .map(userMapper::toDTO)
-                .collect(Collectors.toList());
-    }
 
+    @Transactional
     public List<UserDTO> getManagersParDepartement(Long deptId) {
         return userRepository.findManagersByDepartement(deptId).stream()
                 .map(userMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public List<UserDTO> getMonEquipeComplete(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        List<User> equipe;
+
+        // Si l'utilisateur est un chef (n'a pas de chef au-dessus),
+        // on récupère ses subordonnés directs.
+        if (user.getChefEquipe() == null) {
+            equipe = userRepository.findByChefEquipeId(user.getId());
+        } else {
+            // S'il est un employé, on récupère son équipe + son chef
+            equipe = userRepository.findByChefEquipeId(user.getChefEquipe().getId());
+            if (!equipe.contains(user.getChefEquipe())) {
+                equipe.add(user.getChefEquipe());
+            }
+        }
+
+        // Filtrage et mapping sécurisé
+        return equipe.stream()
+                .map(userMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
     public UserDTO trouverParId(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
         return userMapper.toDTO(user);
     }
 
+    @Transactional
     public UserDTO trouverParEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'email : " + email));
@@ -239,5 +265,12 @@ public class UserService implements UserDetailsService {
 
         user.setPassword(passwordEncoder.encode(newMdp));
         userRepository.save(user);
+    }
+
+    @Transactional
+    public List<UserDTO> getUsersByDepartement(Long deptId) {
+        return userRepository.findByDepartementId(deptId).stream()
+                .map(userMapper::toDTO)
+                .collect(Collectors.toList());
     }
 }

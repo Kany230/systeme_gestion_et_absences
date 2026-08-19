@@ -46,14 +46,14 @@ public class PointageController {
     }
 
     //Les listes
-    @GetMapping("/absence-equipe/{managerId}")
-    public List<Pointage> listeParEquipe(@PathVariable Long managerId) {
-        return pointageService.ListParEquipe(managerId);
+    @GetMapping("/absence-equipe/{chefId}")
+    public List<Pointage> listeParEquipe(@PathVariable Long chefId) {
+        return pointageService.ListParEquipe(chefId);
     }
 
-    @GetMapping("/absence-dept/{departementId}")
-    public List<Pointage> listeParDept(@PathVariable Long departementId) {
-        return pointageService.ListParDepartement(departementId);
+    @GetMapping("/absence-dept/{managerId}")
+    public List<Pointage> listeParDept(@PathVariable Long managerId) {
+        return pointageService.ListParDepartement(managerId);
     }
 
     @GetMapping("/absences")

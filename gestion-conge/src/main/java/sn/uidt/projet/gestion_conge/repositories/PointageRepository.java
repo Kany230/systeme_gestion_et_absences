@@ -23,20 +23,14 @@ public interface PointageRepository extends JpaRepository<Pointage, Long> {
     List<Pointage> findByUserId(Long id);
 
     //Liste des pointage d'une equipe
-    @Query("SELECT p FROM Pointage p WHERE p.user.manager.id = :managerId")
-    List<Pointage> findByManagerId(@Param("managerId") Long managerId);
+    @Query("SELECT p FROM Pointage p WHERE p.user.chefEquipe.id = :chefId OR p.user.id = :chefId")
+    List<Pointage> findByManagerId(@Param("chefId") Long chefId);
 
     //Lister des pointage d'un departement
-    @Query("SELECT p FROM Pointage p WHERE p.user.departement.id = :departementId")
-    List<Pointage> findByDepartementId(@Param("departementId") Long departementId);
+    @Query("SELECT p FROM Pointage p WHERE p.user.manager.id = :managerId OR p.user.id = :managerId")
+    List<Pointage> findByManagerDepartementId(@Param("managerId") Long managerId);
 
     //Pointage par statut pour le drh
     List<Pointage> findByStatut(StatutPointage statut);
 
-    //La liste des pointage pour une date donne
-    List<Pointage> findByDate(LocalDate date);
-
-    @Modifying
-    @Query("DELETE FROM Pointage p WHERE p.user.id = :userId")
-    void supprimerPointagesByUserId(@Param("userId") Long userId);
 }

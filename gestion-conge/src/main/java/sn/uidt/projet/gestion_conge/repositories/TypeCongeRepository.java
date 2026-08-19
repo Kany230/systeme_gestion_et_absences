@@ -9,6 +9,4 @@ import sn.uidt.projet.gestion_conge.entities.TypeConge;
 
 @Repository
 public interface TypeCongeRepository extends JpaRepository<TypeConge, Long> {
-
-    Optional<TypeConge> findByNomType(String nomType);
 }

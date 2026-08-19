@@ -11,6 +11,7 @@ import sn.uidt.projet.gestion_conge.entities.HistoriqueConge;
 @Repository
 public interface HistoriqueCongeRepository extends JpaRepository<HistoriqueConge, Long> {
 
+
     List<HistoriqueConge> findAllByOrderByDateModificationDesc();
 
     @Query("SELECT h FROM HistoriqueConge h WHERE h.compteursConges.user.id = :userId ORDER BY h.dateModification DESC")

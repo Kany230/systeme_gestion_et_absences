@@ -56,10 +56,11 @@ public class CompteursCongesService {
 
     //Permet au RH de corriger un solde 
     @Transactional
-    public void ajouterSoldeParRH(Long userId, double newSolde, String motif) {
+    public void ajouterSoldeParRH(Long userId, double solde, String motif) {
         CompteursConges compteursConges = compteursCongesRepository.findByUserId(userId).orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
 
         double ancienSolde = compteursConges.getSoldeAn();
+        double newSolde = ancienSolde + solde;
         compteursConges.setSoldeAn(newSolde);
         compteursCongesRepository.save(compteursConges);
         enregistreHistorique(compteursConges, ancienSolde, newSolde, "Changement du solde par le RH : " + motif);

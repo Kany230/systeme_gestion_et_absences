@@ -17,42 +17,40 @@ public class DataInitializer {
 
     @Bean
     CommandLineRunner initDatabase(
-            UserService userService, 
-            UserRepository userRepository, 
-            DepartementRepository departementRepository) { // <-- Injection du repository
-        
+            UserService userService,
+            UserRepository userRepository,
+            DepartementRepository departementRepository) {
+
         return args -> {
             String adminEmail = "kany@timeoff.com";
 
-            if (userRepository.findByEmail(adminEmail).isEmpty()) {
-                
-                // 1. Assurer l'existence d'un département par défaut pour l'admin
-                Departement depts = departementRepository.findAll()
-                        .stream()
-                        .findFirst()
-                        .orElseGet(() -> {
-                            Departement defaultDept = new Departement();
-                            defaultDept.setNom("Direction Générale");
-                            // defaultDept.setCode("DIR"); // Si vous utilisez un champ code
-                            return departementRepository.save(defaultDept);
-                        });
+            try {
+                // Check if user exists with a safe approach
+                if (userRepository.findByEmail(adminEmail).isEmpty()) {
 
-                UserDTO admin = new UserDTO();
-                admin.setNom("CISSE");
-                admin.setPrenom("Kany");
-                admin.setEmail(adminEmail);
-                // On ne force plus le matricule à la main, il sera autogénéré (ex: DIR-2026-XXXX)
-                admin.setRole(Role.DRH);
-                admin.setPoste("ADMINISTRATEUR");
-                admin.setDateEmbauche(LocalDate.now());
+                    // Ensure at least one department exists
+                    Departement depts = departementRepository.findAll().stream()
+                            .findFirst()
+                            .orElseGet(() -> {
+                                Departement defaultDept = new Departement();
+                                defaultDept.setNom("Direction Générale");
+                                return departementRepository.save(defaultDept);
+                            });
 
-                try {
-                    // 2. Appel mis à jour avec l'ID du département trouvé ou créé
+                    UserDTO admin = new UserDTO();
+                    admin.setNom("CISSE");
+                    admin.setPrenom("Kany");
+                    admin.setEmail(adminEmail);
+                    admin.setRole(Role.admin);
+                    admin.setPoste("ADMINISTRATEUR");
+                    admin.setDateEmbauche(LocalDate.now());
+
                     userService.creerUser(admin, 25.0, "password123", depts.getId());
-                    System.out.println(">>> [INIT] Compte DRH créé : " + adminEmail);
-                } catch (Exception e) {
-                    System.err.println(">>> [INIT] Erreur lors de la création de l'admin : " + e.getMessage());
+                    System.out.println(">>> [INIT] Compte Admin créé avec succès.");
                 }
+            } catch (Exception e) {
+                // Log the error without crashing the application startup
+                System.err.println(">>> [INIT] Impossible de créer l'admin. Vérifiez la connexion DB : " + e.getMessage());
             }
         };
     }

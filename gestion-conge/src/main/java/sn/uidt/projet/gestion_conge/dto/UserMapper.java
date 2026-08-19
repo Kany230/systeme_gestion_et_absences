@@ -40,6 +40,15 @@ public class UserMapper {
             dto.setManager(managerInfo); // On passe l'objet complet au DTO
         }
 
+        // Adaptation pour le chef
+        if (user.getChefEquipe() != null) {
+            UserDTO.ChefInfo chefInfo = new UserDTO.ChefInfo();
+            chefInfo.setId(user.getChefEquipe().getId());
+            chefInfo.setNom(user.getChefEquipe().getNom());
+            chefInfo.setPrenom(user.getChefEquipe().getPrenom());
+            dto.setChefInfo(chefInfo);
+        }
+
         return dto;
     }
 

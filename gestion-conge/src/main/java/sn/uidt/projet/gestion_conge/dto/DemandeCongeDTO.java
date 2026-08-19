@@ -15,6 +15,9 @@ public class DemandeCongeDTO {
     private double nombreJoursDeduit;
     private String statut;
     private String justificationUrl;
+    private String userNom;
+    private String userPrenom;
+    private String userMatricule;
 
     private String typeCongeNom;
 

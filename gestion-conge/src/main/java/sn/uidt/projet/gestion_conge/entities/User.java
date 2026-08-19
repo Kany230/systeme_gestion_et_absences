@@ -67,6 +67,8 @@ public class User {
     @JsonIgnore
     private User chefEquipe;
 
+
+
     //cascade = CascadeType.ALL : Supprime les enfants automatiquement orphanRemoval = true : Nettoie les références en base de donnees
     @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @JsonIgnore

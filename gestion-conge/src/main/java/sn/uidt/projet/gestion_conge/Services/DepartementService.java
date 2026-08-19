@@ -66,8 +66,17 @@ public class DepartementService {
         }
 
         departement.setManager(chef);
+        departementRepository.save(departement);
 
-        return departementRepository.save(departement);
+        List<User> employes = userRepository.findByDepartementId(departementId);
+        for (User employee: employes){
+            if (!employee.getId().equals(managerId)){
+                employee.setManager(chef);
+            }
+        }
+        userRepository.saveAll(employes);
+
+        return departement;
     }
 
     public Departement updateDepartement(Long id, Departement details) {

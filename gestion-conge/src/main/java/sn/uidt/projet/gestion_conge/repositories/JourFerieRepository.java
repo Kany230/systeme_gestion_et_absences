@@ -13,7 +13,4 @@ public interface JourFerieRepository extends JpaRepository<JourFerie, Long> {
     //Permet de trouver un jour ferie par sa date
     boolean existsByDate(LocalDate date);
 
-    //Permet de trouver un departement par son nom
-    JourFerie findByDate(LocalDate date);
-
 }

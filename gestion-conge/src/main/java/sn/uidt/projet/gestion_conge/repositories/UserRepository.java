@@ -25,9 +25,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Tous les membres d'un département
     List<User> findByDepartementId(Long departementId);
 
-    // Tous les membres d'une équipe (manager)
-    List<User> findByManagerId(Long managerId);
-
     List<User> findByChefEquipeId(Long chefEquipeId);
 
     // Managers d’un département
@@ -51,9 +48,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("DELETE FROM Pointage p WHERE p.user.id = :userId")
     void supprimerPointages(@Param("userId") Long userId);
 
-    //Detacher les pointages d’un utilisateur
-    @Modifying
-    @Transactional
-    @Query("UPDATE Pointage p SET p.user = null WHERE p.user.id = :userId")
-    void detachPointages(@Param("userId") Long userId);
 }

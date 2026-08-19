@@ -4,5 +4,6 @@ public enum Role {
     employe,
     chef_equipe,
     manager, 
-    DRH
+    DRH,
+    admin
 }

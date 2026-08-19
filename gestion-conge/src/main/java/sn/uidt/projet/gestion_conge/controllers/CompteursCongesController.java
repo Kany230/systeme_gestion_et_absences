@@ -28,8 +28,8 @@ public class CompteursCongesController {
     }
 
     @PutMapping("/modifier/{id}")
-    public ResponseEntity<String> modifierSolde(@PathVariable Long id, @RequestParam double newSolde, @RequestParam String motif) {
-        compteursCongesService.ajouterSoldeParRH(id, newSolde, motif);
+    public ResponseEntity<String> modifierSolde(@PathVariable Long id, @RequestParam double solde, @RequestParam String motif) {
+        compteursCongesService.ajouterSoldeParRH(id, solde, motif);
         return ResponseEntity.ok("Le solde est modifie par RH");
     }
 

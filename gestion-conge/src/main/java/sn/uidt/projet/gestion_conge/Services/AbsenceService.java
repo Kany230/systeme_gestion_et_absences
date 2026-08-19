@@ -3,6 +3,7 @@ package sn.uidt.projet.gestion_conge.services;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -15,8 +16,11 @@ import org.springframework.web.multipart.MultipartFile;
 import sn.uidt.projet.gestion_conge.entities.Absence;
 import sn.uidt.projet.gestion_conge.entities.DemandeConge;
 import sn.uidt.projet.gestion_conge.entities.StatutAbsence;
+import sn.uidt.projet.gestion_conge.entities.User;
 import sn.uidt.projet.gestion_conge.repositories.AbsenceRepository;
 import sn.uidt.projet.gestion_conge.repositories.DemandeCongeRepository;
+import sn.uidt.projet.gestion_conge.repositories.JourFerieRepository;
+import sn.uidt.projet.gestion_conge.repositories.UserRepository;
 
 @Service
 public class AbsenceService {
@@ -27,26 +31,12 @@ public class AbsenceService {
     @Autowired
     private DemandeCongeRepository demandeCongeRepository;
 
+    @Autowired
+    private JourFerieRepository jourFerieRepository;
+
+
     private final String UPLOAD_DIR = "uploads/justificatifs/";
 
-    @Scheduled(cron = "0 0 8 * * *")//tous les jours à 08h
-    public void detecterAbsence() {
-        List<DemandeConge> lesRetards = demandeCongeRepository.findRetards(LocalDate.now());
-
-        for (DemandeConge demandeConge : lesRetards) {
-            boolean dejaEnregiste = absenceRepository.findByUserId(demandeConge.getUser().getId()).stream().anyMatch(a -> a.getDemandeConge().getId().equals(demandeConge.getId()));
-
-            if (!dejaEnregiste) {
-                Absence absence = new Absence();
-                absence.setUser(demandeConge.getUser());
-                absence.setDemandeConge(demandeConge);
-                absence.setDateAbsence(demandeConge.getDateFin().plusDays(1));
-                absence.setDateDetecter(LocalDate.now());
-                absence.setStatut(StatutAbsence.pas_justifie);
-                absenceRepository.save(absence);
-            }
-        }
-    }
 
     // Assurez-vous que le paramètre s'appelle bien "file" ici 👇
     public Absence justifierAbsence(Long absenceId, String motifAbsence, MultipartFile file) {
@@ -85,12 +75,13 @@ public class AbsenceService {
 
     //Lister les absences d'une equipe
     public List<Absence> listParEquipe(Long managerId) {
-        return absenceRepository.findByDepartementId(managerId);
+
+        return absenceRepository.findByManagerId(managerId);
     }
 
     //Lister les absences d'un departement
-    public List<Absence> listParDepartement(Long departementId) {
-        return absenceRepository.findByDepartementId(departementId);
+    public List<Absence> listParDepartement(Long chefId) {
+        return absenceRepository.findByChefEquipeId(chefId);
     }
 
     //Lister Tous les absences
